@@ -90,9 +90,6 @@ async def login(email: str, password: str, ip: Optional[str]) -> dict:
     identifier = f"{ip or 'no-ip'}:{email}"
     db = get_db()
 
-    # Pre-check lockout without incrementing.
-    await _check_and_bump_lockout(identifier, success=True) if False else None
-    # (Explicit call below covers both check + bump on failure.)
     user = await db[Collections.USERS].find_one({"email": email})
     ok = bool(user) and user.get("status") != UserStatus.DISABLED and verify_password(
         password, user.get("password_hash", "")

@@ -1,6 +1,7 @@
 """Admin-only user/agent management under /api/admin/agents."""
 from __future__ import annotations
 
+import secrets
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -18,6 +19,15 @@ from models.user import User, UserRole, UserStatus
 router = APIRouter(prefix="/api/admin/agents", tags=["admin:agents"])
 
 require_admin = require_role("admin")
+
+
+def _random_placeholder_password() -> str:
+    """Cryptographic filler for the INVITED user's password_hash slot.
+
+    Never used to authenticate — the invite-acceptance flow always overwrites
+    it before status flips to active.
+    """
+    return "!invited!" + secrets.token_urlsafe(16)
 
 
 # --- schemas -------------------------------------------------------------
@@ -94,7 +104,7 @@ async def invite_agent(
     # Create the user (INVITED — cannot log in until they accept).
     user = User(
         email=email,
-        password_hash=hash_password("!invited!" + user_random()),  # placeholder that cannot be used
+        password_hash=hash_password(_random_placeholder_password()),
         role=UserRole.AGENT,
         status=UserStatus.INVITED,
         display_name=payload.display_name,
@@ -183,8 +193,3 @@ async def set_agent_status(
     )
     await _write_audit(admin, "agent.status_change", agent_id, before, {"status": payload.status}, request)
     return {"ok": True}
-
-
-def user_random() -> str:
-    import secrets
-    return secrets.token_urlsafe(16)
