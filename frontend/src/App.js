@@ -11,6 +11,8 @@ import AgentDashboardPage from "@/pages/agent/AgentDashboardPage";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import AdminAgentsPage from "@/pages/admin/AdminAgentsPage";
 import AdminAgentDetailPage from "@/pages/admin/AdminAgentDetailPage";
+import AdminBookingsPage from "@/pages/admin/AdminBookingsPage";
+import AdminBookingDetailPage from "@/pages/admin/AdminBookingDetailPage";
 
 // Public marketing pages
 import HomePage from "@/pages/public/HomePage";
@@ -74,6 +76,22 @@ function App() {
             element={
               <RequireAuth roles={["admin"]}>
                 <AdminAgentDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/bookings"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminBookingsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/bookings/:id"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminBookingDetailPage />
               </RequireAuth>
             }
           />

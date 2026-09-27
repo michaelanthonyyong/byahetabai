@@ -14,6 +14,7 @@ from core.init_db import init_db
 from routers.auth import router as auth_router
 from routers.admin_users import router as admin_agents_router
 from routers.admin_dashboard import router as admin_dashboard_router
+from routers.admin_bookings import router as admin_bookings_router
 from routers.public import router as public_router
 
 
@@ -76,6 +77,7 @@ app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(admin_agents_router)
 app.include_router(admin_dashboard_router)
+app.include_router(admin_bookings_router)
 app.include_router(public_router)
 
 # CORS — for credentialed cookies, "*" cannot coexist with allow_credentials.
