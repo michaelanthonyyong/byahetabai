@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 
 from core.db import get_client, get_db
 from core.init_db import init_db
+from routers.auth import router as auth_router
+from routers.admin_users import router as admin_agents_router
 
 
 ROOT_DIR = Path(__file__).parent
@@ -69,11 +71,24 @@ async def get_status_checks():
 
 # Include the router in the main app
 app.include_router(api_router)
+app.include_router(auth_router)
+app.include_router(admin_agents_router)
 
+# CORS — for credentialed cookies, "*" cannot coexist with allow_credentials.
+# Same-origin here (frontend and /api share the preview domain), but we still
+# whitelist explicit origins or fall back to a preview-domain regex.
+_cors = os.environ.get("CORS_ORIGINS", "*").strip()
+if _cors and _cors != "*":
+    _origins = [o.strip() for o in _cors.split(",") if o.strip()]
+    _origin_regex = None
+else:
+    _origins = []
+    _origin_regex = r"https?://(localhost(:\d+)?|.*\.preview\.emergentagent\.com)"
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=_origins,
+    allow_origin_regex=_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )

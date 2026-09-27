@@ -113,6 +113,15 @@ INDEXES: dict[str, list[tuple[list, dict[str, Any]]]] = {
     Collections.SETTINGS: [
         ([("key", ASCENDING)], {"unique": True, "name": "uniq_key"}),
     ],
+    # --- auth collections (Phase 2) ---
+    "auth_tokens": [
+        ([("token_hash", ASCENDING)], {"unique": True, "name": "uniq_token_hash"}),
+        ([("user_id", ASCENDING), ("kind", ASCENDING)], {"name": "user_kind"}),
+        ([("expires_at", ASCENDING)], {"name": "ttl_expires_at", "expireAfterSeconds": 0}),
+    ],
+    "login_attempts": [
+        ([("updated_at", ASCENDING)], {"name": "updated_at"}),
+    ],
 }
 
 

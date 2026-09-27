@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import uuid
 from decimal import Decimal
 from typing import Optional
@@ -19,6 +20,9 @@ import bcrypt
 
 from core.db import Collections, get_db
 from core.init_db import init_db
+from dotenv import load_dotenv
+from pathlib import Path
+load_dotenv(Path(__file__).parent / ".env")
 from models import (
     AgentAccount, AgentProfile, AgentStatus,
     AuditLog,
@@ -63,17 +67,31 @@ async def _insert_if_absent(collection: str, natural_key: dict, document) -> tup
 
 async def seed_users_and_admin() -> str:
     """Ensure the master admin exists.  Returns admin user_id."""
-    admin_email = "admin@biyahetabai.example.com"
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@biyahetabai.example.com").lower().strip()
+    admin_password = os.environ.get("ADMIN_PASSWORD", "Admin@12345")
+    admin_name = os.environ.get("ADMIN_DISPLAY_NAME", "Master Admin")
+
     existing = await _get_by(Collections.USERS, email=admin_email)
     if existing:
+        # If password in env changed, sync the hash so login always works.
+        import bcrypt as _bcrypt
+        current_ok = _bcrypt.checkpw(
+            admin_password.encode("utf-8"),
+            existing["password_hash"].encode("utf-8"),
+        )
+        if not current_ok:
+            await get_db()[Collections.USERS].update_one(
+                {"_id": existing["_id"]},
+                {"$set": {"password_hash": _hash_password(admin_password)}},
+            )
         return existing["_id"]
 
     admin = User(
         email=admin_email,
-        password_hash=_hash_password("Admin@12345"),
+        password_hash=_hash_password(admin_password),
         role=UserRole.ADMIN,
         status=UserStatus.ACTIVE,
-        display_name="Master Admin",
+        display_name=admin_name,
     )
     doc = admin.to_mongo()
     await get_db()[Collections.USERS].insert_one(doc)

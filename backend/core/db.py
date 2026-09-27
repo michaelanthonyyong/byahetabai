@@ -49,4 +49,5 @@ class Collections:
             cls.CUSTOMERS, cls.BOOKINGS, cls.TRANSACTIONS, cls.FUND_REQUESTS,
             cls.COMMISSIONS, cls.COMMISSION_WITHDRAWALS, cls.NOTIFICATIONS,
             cls.AUDIT_LOGS, cls.SETTINGS,
+            "auth_tokens", "login_attempts",
         ]
