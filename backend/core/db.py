@@ -41,6 +41,7 @@ class Collections:
     NOTIFICATIONS = "notifications"
     AUDIT_LOGS = "audit_logs"
     SETTINGS = "system_settings"
+    CONTACT_MESSAGES = "contact_messages"
 
     @classmethod
     def all(cls) -> list[str]:
@@ -48,6 +49,6 @@ class Collections:
             cls.USERS, cls.AGENT_PROFILES, cls.DESTINATIONS, cls.PACKAGES,
             cls.CUSTOMERS, cls.BOOKINGS, cls.TRANSACTIONS, cls.FUND_REQUESTS,
             cls.COMMISSIONS, cls.COMMISSION_WITHDRAWALS, cls.NOTIFICATIONS,
-            cls.AUDIT_LOGS, cls.SETTINGS,
+            cls.AUDIT_LOGS, cls.SETTINGS, cls.CONTACT_MESSAGES,
             "auth_tokens", "login_attempts",
         ]

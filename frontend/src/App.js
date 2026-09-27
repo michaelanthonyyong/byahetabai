@@ -17,6 +17,10 @@ import AdminPackagesPage from "@/pages/admin/AdminPackagesPage";
 import AdminPackageEditorPage from "@/pages/admin/AdminPackageEditorPage";
 import AdminDestinationsPage from "@/pages/admin/AdminDestinationsPage";
 import AdminFundRequestsPage from "@/pages/admin/AdminFundRequestsPage";
+import AdminTransactionsPage from "@/pages/admin/AdminTransactionsPage";
+import AdminContactsPage from "@/pages/admin/AdminContactsPage";
+import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
+import AdminAuditLogsPage from "@/pages/admin/AdminAuditLogsPage";
 
 // Public marketing pages
 import HomePage from "@/pages/public/HomePage";
@@ -128,6 +132,38 @@ function App() {
             element={
               <RequireAuth roles={["admin"]}>
                 <AdminFundRequestsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/transactions"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminTransactionsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/contacts"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminContactsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminSettingsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminAuditLogsPage />
               </RequireAuth>
             }
           />

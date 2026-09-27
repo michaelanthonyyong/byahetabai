@@ -18,6 +18,10 @@ from routers.admin_bookings import router as admin_bookings_router
 from routers.admin_destinations import router as admin_destinations_router
 from routers.admin_packages import router as admin_packages_router
 from routers.admin_fund_requests import router as admin_fund_requests_router
+from routers.admin_transactions import router as admin_transactions_router
+from routers.admin_contacts import router as admin_contacts_router
+from routers.admin_settings import router as admin_settings_router
+from routers.admin_audit_logs import router as admin_audit_logs_router
 from routers.public import router as public_router
 
 
@@ -84,6 +88,10 @@ app.include_router(admin_bookings_router)
 app.include_router(admin_destinations_router)
 app.include_router(admin_packages_router)
 app.include_router(admin_fund_requests_router)
+app.include_router(admin_transactions_router)
+app.include_router(admin_contacts_router)
+app.include_router(admin_settings_router)
+app.include_router(admin_audit_logs_router)
 app.include_router(public_router)
 
 # CORS — for credentialed cookies, "*" cannot coexist with allow_credentials.

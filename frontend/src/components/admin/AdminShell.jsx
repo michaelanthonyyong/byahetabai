@@ -2,7 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Users, Package, ReceiptText, ArrowLeftRight,
-  ClipboardList, Settings, LogOut, MapPin,
+  ClipboardList, Settings, LogOut, MapPin, Inbox, ShieldCheck,
 } from "lucide-react";
 
 const NAV = [
@@ -12,8 +12,10 @@ const NAV = [
   { to: "/admin/destinations", label: "Destinations", icon: MapPin },
   { to: "/admin/bookings", label: "Bookings", icon: ReceiptText },
   { to: "/admin/fund-requests", label: "Fund Requests", icon: ClipboardList },
-  { to: "/admin/transactions", label: "Transactions", icon: ArrowLeftRight, soon: true },
-  { to: "/admin/settings", label: "Settings", icon: Settings, soon: true },
+  { to: "/admin/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { to: "/admin/contacts", label: "Contact Messages", icon: Inbox },
+  { to: "/admin/audit-logs", label: "Audit Log", icon: ShieldCheck },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default function AdminShell({ title, subtitle, actions, children }) {

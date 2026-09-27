@@ -75,36 +75,5 @@ async def dashboard(admin: dict = Depends(require_admin)):
     }
 
 
-@router.get("/audit-logs")
-async def list_audit_logs(
-    admin: dict = Depends(require_admin),
-    action: Optional[str] = None,
-    target_type: Optional[str] = None,
-    target_id: Optional[str] = None,
-    actor_user_id: Optional[str] = None,
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=25, ge=1, le=100),
-):
-    db = get_db()
-    q: dict = {}
-    if action:
-        q["action"] = action
-    if target_type:
-        q["target_type"] = target_type
-    if target_id:
-        q["target_id"] = target_id
-    if actor_user_id:
-        q["actor_user_id"] = actor_user_id
-    total = await db[Collections.AUDIT_LOGS].count_documents(q)
-    rows = await (
-        db[Collections.AUDIT_LOGS].find(q).sort("created_at", -1)
-        .skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
-    )
-    logs = []
-    for r in rows:
-        r["id"] = r.pop("_id")
-        logs.append(r)
-    return {
-        "audit_logs": logs,
-        "page": page, "page_size": page_size, "total": total,
-    }
+# Note: the global audit-log feed (with actor lookup + entity/date filters)
+# lives in routers/admin_audit_logs.py. This module is dashboard-only.

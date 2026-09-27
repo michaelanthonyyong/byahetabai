@@ -113,6 +113,10 @@ INDEXES: dict[str, list[tuple[list, dict[str, Any]]]] = {
     Collections.SETTINGS: [
         ([("key", ASCENDING)], {"unique": True, "name": "uniq_key"}),
     ],
+    Collections.CONTACT_MESSAGES: [
+        ([("status", ASCENDING), ("created_at", DESCENDING)], {"name": "status_created"}),
+        ([("email", ASCENDING)], {"name": "email"}),
+    ],
     # --- auth collections (Phase 2) ---
     "auth_tokens": [
         ([("token_hash", ASCENDING)], {"unique": True, "name": "uniq_token_hash"}),
@@ -134,8 +138,13 @@ DEFAULT_SETTINGS = [
     },
     {
         "key": "minimum_topup_amount",
-        "value": "1000.00",
-        "description": "Minimum PHP amount for a fund request (as string; parsed as Decimal).",
+        "value": "100.00",
+        "description": "Minimum PHP amount per fund request (parsed as Decimal).",
+    },
+    {
+        "key": "maximum_topup_amount",
+        "value": "1000000.00",
+        "description": "Maximum PHP amount per fund request (parsed as Decimal).",
     },
     {
         "key": "brand",
@@ -143,6 +152,8 @@ DEFAULT_SETTINGS = [
             "name": "Biyahe'Ta Bai Travel",
             "tagline": "Go. Explore. Discover.",
             "currency": "PHP",
+            "support_email": "hello@biyahetabaitravel.com",
+            "support_phone": "",
         },
         "description": "Public brand metadata used by the marketing site.",
     },

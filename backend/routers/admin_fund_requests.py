@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from core.db import Collections, get_db
 from core.deps import require_role
 from core.financial_service import approve_fund_request, reject_fund_request
+from core.settings_service import get_topup_bounds
 from models.audit_log import AuditLog
 from models.base import money_from_bson, utc_now_iso
 from models.fund_request import FundRequest, FundRequestStatus
@@ -27,10 +28,6 @@ from models.fund_request import FundRequest, FundRequestStatus
 router = APIRouter(prefix="/api/admin/fund-requests", tags=["admin:fund-requests"])
 
 require_admin = require_role("admin")
-
-# Business floor / ceiling (see plan).
-MIN_AMOUNT = Decimal("100.00")
-MAX_AMOUNT = Decimal("1000000.00")
 
 
 # --- schemas -------------------------------------------------------------
@@ -155,10 +152,11 @@ async def create_fund_request_on_behalf(
 
     Lands in ``pending`` so the approval flow is still exercised.
     """
-    if payload.amount < MIN_AMOUNT or payload.amount > MAX_AMOUNT:
+    min_amount, max_amount = await get_topup_bounds()
+    if payload.amount < min_amount or payload.amount > max_amount:
         raise HTTPException(
             status_code=400,
-            detail=f"Amount must be between ₱{MIN_AMOUNT} and ₱{MAX_AMOUNT}",
+            detail=f"Amount must be between ₱{min_amount} and ₱{max_amount}",
         )
     db = get_db()
     profile = await db[Collections.AGENT_PROFILES].find_one({"_id": payload.agent_id})

@@ -98,7 +98,9 @@ export default function AdminDashboardPage() {
             <KpiCard icon={Package} label="Published packages" value={data.catalog.packages_published} sub={`${data.catalog.packages_draft} draft`} testid="kpi-packages" />
             <KpiCard icon={MapPin} label="Destinations" value={data.catalog.destinations_active} testid="kpi-destinations" />
             <KpiCard icon={Receipt} label="Bookings so far" value={data.workflow.total_bookings} testid="kpi-bookings" />
-            <KpiCard icon={Inbox} label="New contact messages" value={data.workflow.new_contact_messages} testid="kpi-contacts" />
+            <Link to="/admin/contacts?status=new" className="block">
+              <KpiCard icon={Inbox} label="New contact messages" value={data.workflow.new_contact_messages} testid="kpi-contacts" />
+            </Link>
           </section>
 
           {/* Recent activity */}

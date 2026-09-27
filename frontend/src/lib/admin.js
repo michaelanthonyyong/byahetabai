@@ -27,8 +27,17 @@ export function humanAction(a) {
     "agent.password_reset_token_issued": "Issued reset link for agent",
     "fund_request.approve": "Approved fund request",
     "fund_request.reject": "Rejected fund request",
+    "fund_request.create_on_behalf": "Filed fund request on behalf of agent",
     "booking.create": "Created booking",
     "booking.confirm": "Confirmed booking",
+    "settings.update": "Updated system setting",
+    "contact.update": "Updated contact message",
+    "package.create": "Created package",
+    "package.update": "Updated package",
+    "package.delete": "Deleted package",
+    "destination.create": "Created destination",
+    "destination.update": "Updated destination",
+    "destination.delete": "Deleted destination",
   };
   return map[a] || a;
 }
