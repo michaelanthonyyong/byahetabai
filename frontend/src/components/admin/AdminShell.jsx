@@ -2,13 +2,14 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Users, Package, ReceiptText, ArrowLeftRight,
-  ClipboardList, Settings, LogOut,
+  ClipboardList, Settings, LogOut, MapPin,
 } from "lucide-react";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/agents", label: "Agents", icon: Users },
-  { to: "/admin/packages", label: "Packages", icon: Package, soon: true },
+  { to: "/admin/packages", label: "Packages", icon: Package },
+  { to: "/admin/destinations", label: "Destinations", icon: MapPin },
   { to: "/admin/bookings", label: "Bookings", icon: ReceiptText },
   { to: "/admin/approvals", label: "Approvals", icon: ClipboardList, soon: true },
   { to: "/admin/transactions", label: "Transactions", icon: ArrowLeftRight, soon: true },

@@ -13,6 +13,9 @@ import AdminAgentsPage from "@/pages/admin/AdminAgentsPage";
 import AdminAgentDetailPage from "@/pages/admin/AdminAgentDetailPage";
 import AdminBookingsPage from "@/pages/admin/AdminBookingsPage";
 import AdminBookingDetailPage from "@/pages/admin/AdminBookingDetailPage";
+import AdminPackagesPage from "@/pages/admin/AdminPackagesPage";
+import AdminPackageEditorPage from "@/pages/admin/AdminPackageEditorPage";
+import AdminDestinationsPage from "@/pages/admin/AdminDestinationsPage";
 
 // Public marketing pages
 import HomePage from "@/pages/public/HomePage";
@@ -92,6 +95,30 @@ function App() {
             element={
               <RequireAuth roles={["admin"]}>
                 <AdminBookingDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/packages"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminPackagesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/packages/:id"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminPackageEditorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/destinations"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminDestinationsPage />
               </RequireAuth>
             }
           />
