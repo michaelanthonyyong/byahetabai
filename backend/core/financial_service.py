@@ -150,10 +150,25 @@ async def approve_fund_request(
     # Idempotency: if a TOP_UP with this key already exists, short-circuit.
     existing = await db[Collections.TRANSACTIONS].find_one({"idempotency_key": idem_key})
     if existing:
+        # Self-heal: a prior crash may have written the txn + credited the
+        # balance but not flipped the fund_request status. Finish the job.
+        if fr.get("status") == "pending":
+            now = utc_now_iso()
+            await db[Collections.FUND_REQUESTS].update_one(
+                {"_id": fund_request_id, "status": "pending"},
+                {"$set": {
+                    "status": "approved",
+                    "decided_by_user_id": admin_user_id,
+                    "decided_at": now,
+                    "decision_note": decision_note,
+                    "transaction_id": existing["_id"],
+                    "updated_at": now,
+                }},
+            )
         return {
-            "transaction_id": existing["_id"],
+            "transaction_id": str(existing["_id"]),
             "already_approved": True,
-            "status": fr.get("status"),
+            "status": "approved",
         }
 
     if fr.get("status") != "pending":
