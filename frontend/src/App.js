@@ -10,6 +10,7 @@ import ForbiddenPage from "@/pages/ForbiddenPage";
 import AgentDashboardPage from "@/pages/agent/AgentDashboardPage";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import AdminAgentsPage from "@/pages/admin/AdminAgentsPage";
+import AdminAgentDetailPage from "@/pages/admin/AdminAgentDetailPage";
 
 // Public marketing pages
 import HomePage from "@/pages/public/HomePage";
@@ -65,6 +66,14 @@ function App() {
             element={
               <RequireAuth roles={["admin"]}>
                 <AdminAgentsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/agents/:id"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminAgentDetailPage />
               </RequireAuth>
             }
           />

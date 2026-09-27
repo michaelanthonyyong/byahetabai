@@ -1,19 +1,22 @@
 """Admin-only user/agent management under /api/admin/agents."""
 from __future__ import annotations
 
+import re
 import secrets
-from typing import Optional
+from decimal import Decimal
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr, Field
 
 from core import auth_service
 from core.db import Collections, get_db
 from core.deps import require_role
+from core.financial_service import adjust_agent_balance
 from core.security import hash_password
 from models.agent import AgentAccount, AgentProfile, AgentStatus
 from models.audit_log import AuditLog
-from models.base import utc_now_iso
+from models.base import money_from_bson, utc_now_iso
 from models.user import User, UserRole, UserStatus
 
 router = APIRouter(prefix="/api/admin/agents", tags=["admin:agents"])
@@ -43,6 +46,19 @@ class AdminSetPasswordIn(BaseModel):
     new_password: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
 
+class AgentUpdateIn(BaseModel):
+    display_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    agency_name: Optional[str] = Field(default=None, max_length=120)
+    phone: Optional[str] = Field(default=None, max_length=40)
+    address: Optional[str] = Field(default=None, max_length=400)
+
+
+class AdjustBalanceIn(BaseModel):
+    kind: str = Field(pattern="^(credit|debit)$")
+    amount: Decimal = Field(gt=0)
+    reason: str = Field(min_length=3, max_length=400)
+
+
 class AgentOut(BaseModel):
     id: str
     user_id: str
@@ -50,16 +66,27 @@ class AgentOut(BaseModel):
     display_name: str
     agency_name: Optional[str] = None
     phone: Optional[str] = None
+    address: Optional[str] = None
     status: str
+    booking_balance: str
+    commission_balance: str
+    currency: str = "PHP"
+    last_login_at: Optional[str] = None
     created_at: str
 
 
 def _agent_out(user: dict, profile: dict) -> AgentOut:
+    booking = money_from_bson(profile.get("booking_account", {}).get("balance")) or Decimal("0.00")
+    commission = money_from_bson(profile.get("commission_account", {}).get("balance")) or Decimal("0.00")
     return AgentOut(
         id=profile["_id"], user_id=user["_id"],
         email=user["email"], display_name=profile["display_name"],
         agency_name=profile.get("agency_name"), phone=profile.get("phone"),
+        address=profile.get("address"),
         status=profile.get("status", "invited"),
+        booking_balance=str(booking),
+        commission_balance=str(commission),
+        last_login_at=user.get("last_login_at"),
         created_at=profile["created_at"],
     )
 
@@ -79,16 +106,45 @@ async def _write_audit(admin: dict, action: str, target_id: str, before: Optiona
 # --- endpoints -----------------------------------------------------------
 
 @router.get("")
-async def list_agents(admin: dict = Depends(require_admin)):
+async def list_agents(
+    admin: dict = Depends(require_admin),
+    status: Optional[str] = Query(default=None, pattern="^(active|invited|disabled)$"),
+    q: Optional[str] = Query(default=None, description="search email / display / agency"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+):
     db = get_db()
-    profiles = await db[Collections.AGENT_PROFILES].find({}).sort("created_at", -1).to_list(length=500)
+    pquery: dict = {}
+    if status:
+        pquery["status"] = status
+
+    # Search — resolve to a matching user_id set when needed.
+    if q:
+        pattern = re.escape(q.strip())
+        rx = {"$regex": pattern, "$options": "i"}
+        # Find user_ids where email matches; also filter profile fields directly.
+        matching_user_ids = [
+            u["_id"] async for u in db[Collections.USERS].find({"email": rx}, {"_id": 1})
+        ]
+        pquery["$or"] = [
+            {"display_name": rx},
+            {"agency_name": rx},
+            {"user_id": {"$in": matching_user_ids}},
+        ]
+
+    total = await db[Collections.AGENT_PROFILES].count_documents(pquery)
+    profiles = await (
+        db[Collections.AGENT_PROFILES].find(pquery).sort("created_at", -1)
+        .skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+    )
     user_ids = [p["user_id"] for p in profiles]
     users = {u["_id"]: u async for u in db[Collections.USERS].find({"_id": {"$in": user_ids}})}
     return {
         "agents": [
             _agent_out(users[p["user_id"]], p).model_dump()
             for p in profiles if p["user_id"] in users
-        ]
+        ],
+        "page": page, "page_size": page_size, "total": total,
     }
 
 
@@ -193,3 +249,120 @@ async def set_agent_status(
     )
     await _write_audit(admin, "agent.status_change", agent_id, before, {"status": payload.status}, request)
     return {"ok": True}
+
+
+# --- detail / update / adjust-balance / transactions --------------------
+
+@router.get("/{agent_id}")
+async def get_agent(agent_id: str, admin: dict = Depends(require_admin)):
+    db = get_db()
+    profile = await db[Collections.AGENT_PROFILES].find_one({"_id": agent_id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    user = await db[Collections.USERS].find_one({"_id": profile["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="Linked user missing")
+    return {"agent": _agent_out(user, profile).model_dump()}
+
+
+@router.patch("/{agent_id}")
+async def update_agent(
+    agent_id: str, payload: AgentUpdateIn, request: Request,
+    admin: dict = Depends(require_admin),
+):
+    db = get_db()
+    profile = await db[Collections.AGENT_PROFILES].find_one({"_id": agent_id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    updates: dict[str, Any] = {"updated_at": utc_now_iso()}
+    before: dict[str, Any] = {}
+    after: dict[str, Any] = {}
+    for field in ("display_name", "agency_name", "phone", "address"):
+        val = getattr(payload, field)
+        if val is not None and val != profile.get(field):
+            updates[field] = val
+            before[field] = profile.get(field)
+            after[field] = val
+
+    if not after:
+        return {"ok": True, "changed": False}
+
+    await db[Collections.AGENT_PROFILES].update_one({"_id": agent_id}, {"$set": updates})
+    if "display_name" in after:
+        await db[Collections.USERS].update_one(
+            {"_id": profile["user_id"]},
+            {"$set": {"display_name": after["display_name"], "updated_at": utc_now_iso()}},
+        )
+    await _write_audit(admin, "agent.update", agent_id, before, after, request)
+    return {"ok": True, "changed": True, "fields": list(after.keys())}
+
+
+@router.post("/{agent_id}/adjust-balance")
+async def adjust_balance(
+    agent_id: str, payload: AdjustBalanceIn, request: Request,
+    admin: dict = Depends(require_admin),
+):
+    result = await adjust_agent_balance(
+        agent_id=agent_id,
+        admin_user_id=admin["_id"],
+        admin_ip=(request.client.host if request.client else None),
+        admin_ua=request.headers.get("user-agent"),
+        kind=payload.kind,
+        amount=payload.amount,
+        reason=payload.reason,
+    )
+    return {"ok": True, **result}
+
+
+@router.get("/{agent_id}/transactions")
+async def list_agent_transactions(
+    agent_id: str,
+    admin: dict = Depends(require_admin),
+    account_kind: Optional[str] = Query(default=None, pattern="^(booking|commission)$"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+):
+    db = get_db()
+    profile = await db[Collections.AGENT_PROFILES].find_one({"_id": agent_id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    q: dict = {"agent_id": agent_id}
+    if account_kind:
+        q["account_kind"] = account_kind
+    total = await db[Collections.TRANSACTIONS].count_documents(q)
+    rows = await (
+        db[Collections.TRANSACTIONS].find(q).sort("created_at", -1)
+        .skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+    )
+    txns = []
+    for r in rows:
+        r["id"] = r.pop("_id")
+        r["amount"] = str(money_from_bson(r["amount"]))
+        r["balance_after"] = str(money_from_bson(r["balance_after"]))
+        txns.append(r)
+    return {"transactions": txns, "page": page, "page_size": page_size, "total": total}
+
+
+@router.get("/{agent_id}/audit-logs")
+async def list_agent_audit(
+    agent_id: str,
+    admin: dict = Depends(require_admin),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+):
+    db = get_db()
+    q = {"target_type": "agent", "target_id": agent_id}
+    total = await db[Collections.AUDIT_LOGS].count_documents(q)
+    rows = await (
+        db[Collections.AUDIT_LOGS].find(q).sort("created_at", -1)
+        .skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+    )
+    logs = []
+    for r in rows:
+        r["id"] = r.pop("_id")
+        logs.append(r)
+    return {
+        "audit_logs": logs,
+        "page": page, "page_size": page_size, "total": total,
+    }
