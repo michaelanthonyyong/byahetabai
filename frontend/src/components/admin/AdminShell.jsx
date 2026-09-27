@@ -11,7 +11,7 @@ const NAV = [
   { to: "/admin/packages", label: "Packages", icon: Package },
   { to: "/admin/destinations", label: "Destinations", icon: MapPin },
   { to: "/admin/bookings", label: "Bookings", icon: ReceiptText },
-  { to: "/admin/approvals", label: "Approvals", icon: ClipboardList, soon: true },
+  { to: "/admin/fund-requests", label: "Fund Requests", icon: ClipboardList },
   { to: "/admin/transactions", label: "Transactions", icon: ArrowLeftRight, soon: true },
   { to: "/admin/settings", label: "Settings", icon: Settings, soon: true },
 ];

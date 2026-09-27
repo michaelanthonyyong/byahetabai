@@ -82,13 +82,15 @@ export default function AdminDashboardPage() {
               sub="Accrued, not yet withdrawn"
               testid="kpi-commission-balance"
             />
-            <KpiCard
-              icon={Inbox} label="Pending approvals"
-              value={data.workflow.pending_fund_requests + data.workflow.pending_withdrawals}
-              sub={`${data.workflow.pending_fund_requests} fund · ${data.workflow.pending_withdrawals} withdrawal`}
-              tone={data.workflow.pending_fund_requests + data.workflow.pending_withdrawals > 0 ? "warn" : "default"}
-              testid="kpi-pending-approvals"
-            />
+            <Link to="/admin/fund-requests?status=pending" className="block group">
+              <KpiCard
+                icon={Inbox} label="Pending approvals"
+                value={data.workflow.pending_fund_requests + data.workflow.pending_withdrawals}
+                sub={`${data.workflow.pending_fund_requests} fund · ${data.workflow.pending_withdrawals} withdrawal`}
+                tone={data.workflow.pending_fund_requests + data.workflow.pending_withdrawals > 0 ? "warn" : "default"}
+                testid="kpi-pending-approvals"
+              />
+            </Link>
           </section>
 
           {/* Secondary metrics */}

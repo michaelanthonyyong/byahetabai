@@ -16,6 +16,7 @@ import AdminBookingDetailPage from "@/pages/admin/AdminBookingDetailPage";
 import AdminPackagesPage from "@/pages/admin/AdminPackagesPage";
 import AdminPackageEditorPage from "@/pages/admin/AdminPackageEditorPage";
 import AdminDestinationsPage from "@/pages/admin/AdminDestinationsPage";
+import AdminFundRequestsPage from "@/pages/admin/AdminFundRequestsPage";
 
 // Public marketing pages
 import HomePage from "@/pages/public/HomePage";
@@ -119,6 +120,14 @@ function App() {
             element={
               <RequireAuth roles={["admin"]}>
                 <AdminDestinationsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/fund-requests"
+            element={
+              <RequireAuth roles={["admin"]}>
+                <AdminFundRequestsPage />
               </RequireAuth>
             }
           />

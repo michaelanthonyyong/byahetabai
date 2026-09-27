@@ -127,6 +127,154 @@ async def adjust_agent_balance(
     }
 
 
+async def approve_fund_request(
+    *,
+    fund_request_id: str,
+    admin_user_id: str,
+    admin_ip: Optional[str],
+    admin_ua: Optional[str],
+    decision_note: Optional[str] = None,
+) -> dict:
+    """Atomic TOP_UP credit driven by a pending fund request.
+
+    Uses ``idempotency_key = "fund_request:{id}"`` so a duplicate approval
+    is a no-op that returns the existing transaction id.
+    """
+    db = get_db()
+    fr = await db[Collections.FUND_REQUESTS].find_one({"_id": fund_request_id})
+    if not fr:
+        raise HTTPException(status_code=404, detail="Fund request not found")
+
+    idem_key = f"fund_request:{fund_request_id}"
+
+    # Idempotency: if a TOP_UP with this key already exists, short-circuit.
+    existing = await db[Collections.TRANSACTIONS].find_one({"idempotency_key": idem_key})
+    if existing:
+        return {
+            "transaction_id": existing["_id"],
+            "already_approved": True,
+            "status": fr.get("status"),
+        }
+
+    if fr.get("status") != "pending":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only pending requests can be approved (current: {fr.get('status')})",
+        )
+
+    profile = await db[Collections.AGENT_PROFILES].find_one({"_id": fr["agent_id"]})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Agent profile missing")
+
+    amount = money_from_bson(fr["amount"]) or Decimal("0.00")
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Request amount must be > 0")
+
+    current_balance = money_from_bson(profile["booking_account"]["balance"]) or Decimal("0.00")
+    new_balance = (current_balance + amount).quantize(Decimal("0.01"))
+
+    txn = FinancialTransaction(
+        agent_id=fr["agent_id"],
+        account_kind="booking",
+        type=TransactionType.TOP_UP,
+        amount=amount,
+        balance_after=new_balance,
+        ref_type="fund_request",
+        ref_id=fund_request_id,
+        idempotency_key=idem_key,
+        created_by_user_id=admin_user_id,
+        note=(decision_note or "Fund request approval"),
+    )
+    audit = AuditLog(
+        actor_user_id=admin_user_id, actor_role="admin",
+        action="fund_request.approve",
+        target_type="fund_request", target_id=fund_request_id,
+        before={"status": "pending", "booking_balance": str(current_balance)},
+        after={
+            "status": "approved",
+            "amount": str(amount),
+            "booking_balance": str(new_balance),
+            "decision_note": decision_note,
+        },
+        ip=admin_ip, user_agent=admin_ua,
+    )
+
+    now = utc_now_iso()
+    await db[Collections.TRANSACTIONS].insert_one(txn.to_mongo())
+    await db[Collections.AGENT_PROFILES].update_one(
+        {"_id": fr["agent_id"]},
+        {"$set": {
+            "booking_account.balance": money_to_bson(new_balance),
+            "updated_at": now,
+        }},
+    )
+    await db[Collections.FUND_REQUESTS].update_one(
+        {"_id": fund_request_id, "status": "pending"},
+        {"$set": {
+            "status": "approved",
+            "decided_by_user_id": admin_user_id,
+            "decided_at": now,
+            "decision_note": decision_note,
+            "transaction_id": txn.id,
+            "updated_at": now,
+        }},
+    )
+    await db[Collections.AUDIT_LOGS].insert_one(audit.to_mongo())
+
+    return {
+        "transaction_id": txn.id,
+        "booking_balance": str(new_balance),
+        "previous_balance": str(current_balance),
+        "already_approved": False,
+    }
+
+
+async def reject_fund_request(
+    *,
+    fund_request_id: str,
+    admin_user_id: str,
+    admin_ip: Optional[str],
+    admin_ua: Optional[str],
+    decision_note: str,
+) -> dict:
+    """Mark a pending fund request as rejected. No ledger movement."""
+    if not decision_note or len(decision_note.strip()) < 3:
+        raise HTTPException(status_code=400, detail="A rejection reason (≥3 chars) is required")
+
+    db = get_db()
+    fr = await db[Collections.FUND_REQUESTS].find_one({"_id": fund_request_id})
+    if not fr:
+        raise HTTPException(status_code=404, detail="Fund request not found")
+    if fr.get("status") != "pending":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only pending requests can be rejected (current: {fr.get('status')})",
+        )
+
+    now = utc_now_iso()
+    await db[Collections.FUND_REQUESTS].update_one(
+        {"_id": fund_request_id, "status": "pending"},
+        {"$set": {
+            "status": "rejected",
+            "decided_by_user_id": admin_user_id,
+            "decided_at": now,
+            "decision_note": decision_note.strip(),
+            "updated_at": now,
+        }},
+    )
+    await db[Collections.AUDIT_LOGS].insert_one(
+        AuditLog(
+            actor_user_id=admin_user_id, actor_role="admin",
+            action="fund_request.reject",
+            target_type="fund_request", target_id=fund_request_id,
+            before={"status": "pending"},
+            after={"status": "rejected", "decision_note": decision_note.strip()},
+            ip=admin_ip, user_agent=admin_ua,
+        ).to_mongo()
+    )
+    return {"ok": True, "status": "rejected"}
+
+
 async def sum_agent_balances() -> dict:
     """System-wide totals for the admin dashboard."""
     db = get_db()
