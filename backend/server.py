@@ -1,7 +1,6 @@
 from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -10,14 +9,16 @@ from typing import List
 import uuid
 from datetime import datetime, timezone
 
+from core.db import get_client, get_db
+from core.init_db import init_db
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB connection (single shared client from core.db).
+client = get_client()
+db = get_db()
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -83,6 +84,12 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def startup_init_db():
+    """Idempotent bootstrap of collections, indexes and default settings."""
+    await init_db()
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
