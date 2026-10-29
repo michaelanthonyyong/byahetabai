@@ -68,14 +68,25 @@ biyahetabaitravel.com.
   - "Customer view" privacy toggle (localStorage) masks net cost, markup,
     earnings, balances and top-up amounts; shows retail only.
   - Tests: `tests/test_agent_phase5_portal.py` (24/24).
+- **2026-10-29 Phase 6** — Agent customers, bookings & customer quotes:
+  - `/api/agent/customers` CRUD (own only; delete blocked if bookings exist).
+  - `POST /api/agent/bookings`: requires markup `ok`, pax range, future date;
+    atomic overdraft-proof `$inc` debit of NET cost only (BOOKING_DEBIT,
+    idempotency `booking_debit:{id}`), snapshot markup/retail on booking,
+    status pending until admin confirms. Agents can't cancel (admin only).
+  - Bonus commission is only recorded as earnings (ledger), never paid in.
+  - Quote PDF (reportlab): `POST /api/agent/quotes/pdf`,
+    `GET /api/agent/bookings/{id}/quote.pdf` — brand, agent contact, retail
+    per pax + total, inclusions/exclusions, 7-day validity. No net/markup.
+  - Admin refund / commission reversal switched to atomic `$inc`.
+  - Frontend: Customers, Bookings (tabs), New booking, Booking detail,
+    Book/Quote buttons on package detail; Customer view respected.
+  - Tests: `tests/test_agent_phase6_bookings.py` (25/25).
 
 ## Backlog
-### P0 — Phase 6: Agent Customers & Bookings
-- Agent CRUD for own customers (strict `agent_id` from JWT).
-- Booking creation → atomic `BOOKING_DEBIT` of net cost; only when markup
-  is `ok`; snapshot `unit_markup_amount`, `total_markup_amount`,
-  `total_retail_price` on the booking (ledger already reads them).
-- Checkout screens must respect the Customer view toggle.
+### Next candidates
+- Email quotes/booking notifications to customers (not chosen yet).
+- Agent notification when admin confirms/cancels a booking.
 
 ### CANCELLED — Phase 7 Commission Withdrawals (agents collect markup upfront)
 
@@ -84,6 +95,8 @@ biyahetabaitravel.com.
 - Make the agent "max 5 pending top-ups" check atomic (currently count-then-insert).
 - Brute-force lockout on `/api/auth/login`.
 - Periodic financial reconciliation (`balance == SUM(txn)` per account).
+- Note: phase4 step3 admin booking tests assume BTB-DEMO-0001 is confirmed; it is
+  currently cancelled in this DB, so those tests need a fresh fixture.
 - Consider Mongo transactions when a replica set is available.
 
 ### Deferred UX polish

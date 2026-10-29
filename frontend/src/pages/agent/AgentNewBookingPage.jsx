@@ -15,7 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-const tomorrow = () => new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+const tomorrow = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 const Summary = ({ pkg, pax, balance, busy, canSubmit, onSubmit }) => {
   const { hidden } = usePrivacy();
@@ -35,6 +38,7 @@ const Summary = ({ pkg, pax, balance, busy, canSubmit, onSubmit }) => {
         </div>
       ) : null}
       {short && !hidden ? <p className="text-xs text-red-600" data-testid="new-booking-insufficient">Not enough balance. Request a top-up first.</p> : null}
+      {short && hidden ? <p className="text-xs text-stone-500" data-testid="new-booking-blocked-hint">This booking can't be placed right now. Turn off Customer view for details.</p> : null}
       <Button onClick={onSubmit} disabled={!canSubmit || busy || short} className="w-full bg-teal-800 hover:bg-teal-900" data-testid="new-booking-submit">
         {busy ? <Loader2 className="animate-spin mr-1" size={14} /> : null}Confirm booking
       </Button>
@@ -102,13 +106,13 @@ export default function AgentNewBookingPage() {
               <Button variant="outline" onClick={() => setAddCustomer(true)} data-testid="new-booking-add-customer"><Plus size={14} /></Button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="min-w-0">
               <Label htmlFor="nb-pax">Travellers{pkg ? ` (${pkg.min_pax}–${pkg.max_pax})` : ""}</Label>
               <Input id="nb-pax" type="number" min="1" value={form.pax} onChange={(e) => set("pax")(e.target.value)} data-testid="new-booking-pax" />
               {pkg && !paxOk ? <p className="text-xs text-red-600 mt-1" data-testid="new-booking-pax-error">Out of range for this package.</p> : null}
             </div>
-            <div><Label htmlFor="nb-date">Travel date</Label><Input id="nb-date" type="date" min={tomorrow()} value={form.date} onChange={(e) => set("date")(e.target.value)} data-testid="new-booking-date" /></div>
+            <div className="min-w-0"><Label htmlFor="nb-date">Travel date</Label><Input id="nb-date" type="date" min={tomorrow()} value={form.date} onChange={(e) => set("date")(e.target.value)} data-testid="new-booking-date" /></div>
           </div>
           {paxOk ? (
             <div className="space-y-2">

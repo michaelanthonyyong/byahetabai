@@ -1,0 +1,40 @@
+{
+  "summary": "Phase 6 (agent customers, agent bookings with net-cost debit, customer quote PDFs) tested end-to-end. Backend: new pytest file with 25 tests, all passing (plus Phase 5 regression 24/24). Covered customers CRUD/search/validation/409-on-delete/cross-agent 404 isolation, booking validation (markup unset/out_of_range, pax range, past/bad date, foreign customer, draft pkg), booking creation snapshot math (Cebu 3 pax: retail 12000, net 10500, markup 1500, bonus 900, earned 2400), BOOKING_DEBIT txn with idempotency key booking_debit:{id}, audit booking.create, no commission record, insufficient balance 400 with no debit/no booking, list status filter, ledger/transactions, admin confirm + cancel-with-refund (balance restored, ledger earned 0), agents cannot cancel, quote PDFs (both endpoints) contain retail per-pax + total and do NOT contain net/markup/bonus values, RBAC admin 403/anon 401. Frontend: customers new/edit/search/delete dialogs, delete disabled when customer has bookings, package detail Book/Quote buttons, new booking page (preselected package, only bookable packages listed, inline + customer auto-selected, traveller inputs per pax, summary totals, pax error, insufficient-balance warning disables submit, submit navigates to detail), booking detail + Customer quote download, bookings status tabs, Quote dialog download, Customer-view privacy toggle hides splits on new booking/detail/list, mobile 390px with no horizontal page overflow. All data cleaned up; balance restored to 53604 and ledger sum == balance.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PATCH /api/admin/bookings/{id}/status (core/booking_service.change_status refund)", "issue": "Refund reads balance then writes with $set (read-modify-write). Now that agents debit concurrently via atomic $inc in create_agent_booking, a refund racing an agent booking can overwrite/lose the agent's debit (balance != SUM(ledger)). Use {$inc: {booking_account.balance: +total_agent_cost}} with ReturnDocument.AFTER to compute balance_after. Same pattern for commission reversal."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AgentNewBookingPage travel date (mobile 390px)", "issue": "Native date input in the 2-col grid overflows the card's right edge (calendar icon clipped)", "selector": "[data-testid='new-booking-date']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "New booking / Quote dialog", "issues": ["Uses browser-native <input type=date> instead of shadcn Calendar/Popover date picker", "New booking min date = tomorrow() computed in UTC while backend accepts today; inconsistent rule"]},
+      {"screen": "New booking (Customer view ON)", "issues": ["Insufficient-balance message is hidden when privacy is ON but Confirm button stays disabled with no explanation"]},
+      {"screen": "Bookings list (Customer view ON)", "issues": ["'Earned' column header still shown with •••• values; consider hiding the column entirely to show retail only"]},
+      {"screen": "Agent pages header", "issues": ["Sonner toasts (top-right) overlay header action buttons (e.g. Customer quote) for a few seconds"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_agent_phase6_bookings.py", "/app/backend/tests/test_agent_phase5_portal.py", "/app/test_reports/pytest/pytest_phase6.xml"],
+  "action_items": [
+    "Make booking refund/commission-reversal balance updates atomic with $inc (booking_service.change_status)",
+    "Fix mobile overflow of travel date input on New booking (stack pax/date on small screens or min-w-0)",
+    "Optional: use shadcn date picker; align min travel date with backend (today allowed); show a neutral 'cannot submit' hint in customer view; hide Earned column in customer view"
+  ],
+  "critical_code_review_comments": [
+    "core/booking_service.change_status: non-atomic $set balance update on refund (race with agent $inc debits)",
+    "agent_booking_service: debit+txn+booking not in a Mongo transaction, but compensation logic is present and balance == SUM(ledger) verified after tests",
+    "AgentCustomersPage search filters client-side only (server supports ?q) — fine for <=500 rows, list endpoint caps at 500"
+  ],
+  "updated_files": ["/app/backend/tests/test_agent_phase6_bookings.py (new)", "/app/backend/tests/test_agent_phase5_portal.py (cleanup now restores pre-existing markup values; it previously mutated demo Cebu markup 500->800)"],
+  "success_rate": {"backend": "100% (25/25 phase6, 24/24 phase5 regression)", "frontend": "~95% (all flows pass; minor mobile/design issues)"},
+  "test_credentials": "Admin yongmichael992@gmail.com / Admin@12345; Agent agent.demo@biyahetabai.example.com / Agent@12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None persisted. Temporary TEST_P6 customers/bookings/transactions/markups deleted; agent balance restored to 53604.00; Cebu markup restored to 500.00; markup bounds settings restored (0.00/10000.00). Pre-existing TEST_Ana Reyes + BTB-261029-B168 untouched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n0. Phase6 test uses pymongo for cleanup and inserts a temp customer for other agent bab98fb5 to test isolation. Demo agent balance baseline 53604.00 with pending BTB-261029-B168 (7000 debited). Server clock is Oct 2026.",
+  "rca of the issue": "Refund race: booking_service.change_status computes new_balance = read balance + refund and writes $set; any concurrent $inc between read and write is lost. Mitigation: switch to $inc and read balance_after from find_one_and_update."
+}

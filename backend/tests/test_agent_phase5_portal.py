@@ -54,9 +54,12 @@ def agent():
 def cleanup(db, admin, agent):
     prof = agent.get(f"{API}/agent/dashboard", timeout=15)
     existing_markups = {m["_id"] for m in db.agent_package_markups.find({}, {"_id": 1})}
+    markup_values = {m["_id"]: m["markup_amount"] for m in db.agent_package_markups.find({})}
     yield
     db.fund_requests.delete_many({"reference_no": {"$regex": f"^{REF_PREFIX}"}})
     db.agent_package_markups.delete_many({"_id": {"$nin": list(existing_markups)}})
+    for mid, val in markup_values.items():
+        db.agent_package_markups.update_one({"_id": mid}, {"$set": {"markup_amount": val}})
     admin.put(f"{API}/admin/settings/maximum_markup_amount", json={"value": "10000.00"}, timeout=15)
     admin.put(f"{API}/admin/settings/minimum_markup_amount", json={"value": "0.00"}, timeout=15)
 

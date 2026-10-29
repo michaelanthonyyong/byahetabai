@@ -19,6 +19,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import HTTPException
+from pymongo import ReturnDocument
 
 from core.db import Collections, get_db
 from models.audit_log import AuditLog
@@ -83,11 +84,15 @@ async def change_status(
     if new_status == BookingStatus.CANCELLED.value and refund:
         total_agent_cost = money_from_bson(booking["total_agent_cost"]) or Decimal("0.00")
         if total_agent_cost > 0:
-            profile = await db[Collections.AGENT_PROFILES].find_one({"_id": booking["agent_id"]})
+            profile = await db[Collections.AGENT_PROFILES].find_one_and_update(
+                {"_id": booking["agent_id"]},
+                {"$inc": {"booking_account.balance": money_to_bson(total_agent_cost)},
+                 "$set": {"updated_at": utc_now_iso()}},
+                return_document=ReturnDocument.AFTER,
+            )
             if not profile:
                 raise HTTPException(status_code=500, detail="Agent profile missing for booking")
-            cur = money_from_bson(profile["booking_account"]["balance"]) or Decimal("0.00")
-            new_balance = (cur + total_agent_cost).quantize(Decimal("0.01"))
+            new_balance = money_from_bson(profile["booking_account"]["balance"]).quantize(Decimal("0.01"))
             refund_txn = FinancialTransaction(
                 agent_id=booking["agent_id"], account_kind="booking",
                 type=TransactionType.BOOKING_REFUND,
@@ -99,13 +104,6 @@ async def change_status(
                 note=f"Refund on cancel: {reason or ''}",
             )
             await db[Collections.TRANSACTIONS].insert_one(refund_txn.to_mongo())
-            await db[Collections.AGENT_PROFILES].update_one(
-                {"_id": booking["agent_id"]},
-                {"$set": {
-                    "booking_account.balance": money_to_bson(new_balance),
-                    "updated_at": utc_now_iso(),
-                }},
-            )
             refund_txn_id = refund_txn.id
 
     # --- reverse commission accrual on cancellation ---
@@ -114,10 +112,14 @@ async def change_status(
             {"booking_id": booking["_id"], "status": CommissionStatus.ACCRUED.value}
         )
         if commission:
-            profile = await db[Collections.AGENT_PROFILES].find_one({"_id": booking["agent_id"]})
-            cur = money_from_bson(profile["commission_account"]["balance"]) or Decimal("0.00")
             amt = money_from_bson(commission["amount"]) or Decimal("0.00")
-            new_commission_balance = (cur - amt).quantize(Decimal("0.01"))
+            profile = await db[Collections.AGENT_PROFILES].find_one_and_update(
+                {"_id": booking["agent_id"]},
+                {"$inc": {"commission_account.balance": money_to_bson(-amt)},
+                 "$set": {"updated_at": utc_now_iso()}},
+                return_document=ReturnDocument.AFTER,
+            )
+            new_commission_balance = money_from_bson(profile["commission_account"]["balance"]).quantize(Decimal("0.01"))
             reversal_txn = FinancialTransaction(
                 agent_id=booking["agent_id"], account_kind="commission",
                 type=TransactionType.COMMISSION_REVERSAL,
@@ -129,13 +131,6 @@ async def change_status(
                 note=f"Reversal on cancel: {reason or ''}",
             )
             await db[Collections.TRANSACTIONS].insert_one(reversal_txn.to_mongo())
-            await db[Collections.AGENT_PROFILES].update_one(
-                {"_id": booking["agent_id"]},
-                {"$set": {
-                    "commission_account.balance": money_to_bson(new_commission_balance),
-                    "updated_at": utc_now_iso(),
-                }},
-            )
             await db[Collections.COMMISSIONS].update_one(
                 {"_id": commission["_id"]},
                 {"$set": {

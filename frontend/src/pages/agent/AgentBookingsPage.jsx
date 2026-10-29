@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import AgentShell from "@/components/agent/AgentShell";
 import { Masked } from "@/components/agent/PrivacyToggle";
+import { usePrivacy } from "@/contexts/PrivacyContext";
 import { LedgerStatus } from "@/pages/agent/AgentLedgerPage";
 import { api } from "@/lib/api";
 import { formatPHP } from "@/lib/money";
@@ -15,6 +16,7 @@ export const fmtDate = (iso) => (iso ? new Date(`${iso.slice(0, 10)}T00:00:00`).
 
 export default function AgentBookingsPage() {
   const [params, setParams] = useSearchParams();
+  const { hidden } = usePrivacy();
   const status = params.get("status") || "";
   const { data, isLoading } = useQuery({
     queryKey: ["agent-bookings", status],
@@ -39,7 +41,7 @@ export default function AgentBookingsPage() {
             <TableHeader><TableRow>
               <TableHead>Booking ID</TableHead><TableHead>Customer</TableHead><TableHead>Package</TableHead>
               <TableHead>Travel</TableHead><TableHead className="text-right">Customer pays</TableHead>
-              <TableHead className="text-right">Earned</TableHead><TableHead>Status</TableHead>
+              {!hidden ? <TableHead className="text-right">Earned</TableHead> : null}<TableHead>Status</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {isLoading ? null : rows.length === 0 ? (
@@ -53,7 +55,7 @@ export default function AgentBookingsPage() {
                   <TableCell className="min-w-[180px]">{b.package?.title} · {b.pax} pax</TableCell>
                   <TableCell className="whitespace-nowrap">{fmtDate(b.travel_start_date)}</TableCell>
                   <TableCell className="text-right">{formatPHP(b.total_retail_price)}</TableCell>
-                  <TableCell className="text-right text-emerald-700"><Masked>{formatPHP(b.earned)}</Masked></TableCell>
+                  {!hidden ? <TableCell className="text-right text-emerald-700"><Masked>{formatPHP(b.earned)}</Masked></TableCell> : null}
                   <TableCell><LedgerStatus status={b.status} /></TableCell>
                 </TableRow>
               ))}
