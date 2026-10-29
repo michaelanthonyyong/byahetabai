@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { formatPHP } from "@/lib/money";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Compass, Wallet, BookText, AlertTriangle, ArrowRight } from "lucide-react";
+import { Compass, Wallet, BookText, AlertTriangle, ArrowRight, CalendarPlus } from "lucide-react";
 import { LedgerStatus } from "@/pages/agent/AgentLedgerPage";
 import { usePrivacy } from "@/contexts/PrivacyContext";
 
@@ -41,7 +41,7 @@ const RecentLedger = ({ rows }) => (
     <CardContent className="p-0">
       <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
         <div className="font-medium">Recent bookings</div>
-        <Link to="/agent/ledger" className="text-xs text-teal-800 hover:underline" data-testid="dashboard-view-ledger">View ledger</Link>
+        <Link to="/agent/bookings" className="text-xs text-teal-800 hover:underline" data-testid="dashboard-view-ledger">View all</Link>
       </div>
       {rows.length === 0 ? (
         <div className="px-5 py-8 text-sm text-stone-500" data-testid="dashboard-no-bookings">No bookings yet.</div>
@@ -102,6 +102,7 @@ export default function AgentDashboardPage() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
               <div className="lg:col-span-3 min-w-0"><RecentLedger rows={data.recent_ledger} /></div>
               <div className="lg:col-span-2 space-y-3 min-w-0">
+                <QuickLink to="/agent/bookings/new" icon={CalendarPlus} title="New booking" text="Book a package for a customer" testid="quick-link-new-booking" />
                 <QuickLink to="/agent/catalog" icon={Compass} title="Package catalog" text={hidden ? "Browse packages and prices" : `Set your markup (${formatPHP(data.markup_bounds.min)} – ${formatPHP(data.markup_bounds.max)} per pax)`} testid="quick-link-catalog" />
                 <QuickLink to="/agent/top-ups" icon={Wallet} title="Request a top-up" text="Add funds to your booking balance" testid="quick-link-topups" />
                 <QuickLink to="/agent/ledger" icon={BookText} title="Earnings ledger" text="Every booking, cost and profit" testid="quick-link-ledger" />

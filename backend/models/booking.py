@@ -70,6 +70,10 @@ class Booking(BaseDocument):
     total_agent_cost: Decimal
     total_guest_price: Decimal
     total_commission_amount: Decimal
+    # Agent markup snapshot (agent-created bookings). Retail = agent cost + markup.
+    unit_markup_amount: Optional[Decimal] = None
+    total_markup_amount: Optional[Decimal] = None
+    total_retail_price: Optional[Decimal] = None
     currency: str = "PHP"
 
     travel_start_date: Optional[str] = None  # ISO date
@@ -85,6 +89,7 @@ class Booking(BaseDocument):
     @field_validator(
         "unit_agent_cost", "unit_guest_price", "unit_commission_amount",
         "total_agent_cost", "total_guest_price", "total_commission_amount",
+        "unit_markup_amount", "total_markup_amount", "total_retail_price",
         mode="before",
     )
     @classmethod
@@ -94,15 +99,17 @@ class Booking(BaseDocument):
     @field_serializer(
         "unit_agent_cost", "unit_guest_price", "unit_commission_amount",
         "total_agent_cost", "total_guest_price", "total_commission_amount",
+        "unit_markup_amount", "total_markup_amount", "total_retail_price",
     )
-    def _ser_money(self, v: Decimal) -> str:
-        return str(v)
+    def _ser_money(self, v: Optional[Decimal]) -> Optional[str]:
+        return str(v) if v is not None else None
 
     def to_mongo(self) -> dict:
         doc = super().to_mongo()
         for k in (
             "unit_agent_cost", "unit_guest_price", "unit_commission_amount",
             "total_agent_cost", "total_guest_price", "total_commission_amount",
+            "unit_markup_amount", "total_markup_amount", "total_retail_price",
         ):
             if doc.get(k) is not None:
                 doc[k] = money_to_bson(doc[k])

@@ -1,11 +1,13 @@
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PrivacyToggle } from "@/components/agent/PrivacyToggle";
-import { LayoutDashboard, Compass, Wallet, BookText, UserRound, LogOut } from "lucide-react";
+import { LayoutDashboard, Compass, Wallet, BookText, UserRound, LogOut, Users, ReceiptText } from "lucide-react";
 
 const NAV = [
   { to: "/agent", label: "Dashboard", icon: LayoutDashboard, end: true, id: "dashboard" },
   { to: "/agent/catalog", label: "Catalog", icon: Compass, id: "catalog" },
+  { to: "/agent/bookings", label: "Bookings", icon: ReceiptText, id: "bookings" },
+  { to: "/agent/customers", label: "Customers", icon: Users, id: "customers" },
   { to: "/agent/top-ups", label: "Top-ups", icon: Wallet, id: "top-ups" },
   { to: "/agent/ledger", label: "Ledger", icon: BookText, id: "ledger" },
   { to: "/agent/profile", label: "Profile", icon: UserRound, id: "profile" },

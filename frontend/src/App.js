@@ -13,6 +13,10 @@ import AgentPackageDetailPage from "@/pages/agent/AgentPackageDetailPage";
 import AgentFundRequestsPage from "@/pages/agent/AgentFundRequestsPage";
 import AgentLedgerPage from "@/pages/agent/AgentLedgerPage";
 import AgentProfilePage from "@/pages/agent/AgentProfilePage";
+import AgentCustomersPage from "@/pages/agent/AgentCustomersPage";
+import AgentBookingsPage from "@/pages/agent/AgentBookingsPage";
+import AgentNewBookingPage from "@/pages/agent/AgentNewBookingPage";
+import AgentBookingDetailPage from "@/pages/agent/AgentBookingDetailPage";
 import { PrivacyProvider } from "@/contexts/PrivacyContext";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import AdminAgentsPage from "@/pages/admin/AdminAgentsPage";
@@ -69,6 +73,10 @@ function App() {
           <Route path="/agent/top-ups" element={agentRoute(<AgentFundRequestsPage />)} />
           <Route path="/agent/ledger" element={agentRoute(<AgentLedgerPage />)} />
           <Route path="/agent/profile" element={agentRoute(<AgentProfilePage />)} />
+          <Route path="/agent/customers" element={agentRoute(<AgentCustomersPage />)} />
+          <Route path="/agent/bookings" element={agentRoute(<AgentBookingsPage />)} />
+          <Route path="/agent/bookings/new" element={agentRoute(<AgentNewBookingPage />)} />
+          <Route path="/agent/bookings/:id" element={agentRoute(<AgentBookingDetailPage />)} />
 
           {/* Admin portal */}
           <Route

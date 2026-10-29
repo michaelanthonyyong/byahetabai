@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import AgentShell from "@/components/agent/AgentShell";
 import { MarkupBadge, PriceBreakdown, RetailOnly } from "@/components/agent/PackageCard";
 import { MarkupDialog } from "@/components/agent/MarkupDialog";
+import { QuoteDialog } from "@/components/agent/QuoteDialog";
 import { usePrivacy } from "@/contexts/PrivacyContext";
 import { api, formatApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Check, X, Pencil } from "lucide-react";
+import { ArrowLeft, Check, X, Pencil, FileDown, CalendarPlus } from "lucide-react";
 
 const List = ({ items, icon: Icon, tone }) => (
   <ul className="space-y-1.5 text-sm text-stone-700">
@@ -32,6 +33,7 @@ export default function AgentPackageDetailPage() {
   const { id } = useParams();
   const { hidden } = usePrivacy();
   const [editing, setEditing] = useState(false);
+  const [quoting, setQuoting] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ["agent-package", id],
     queryFn: () => api.get(`/agent/packages/${id}`).then((r) => r.data),
@@ -56,8 +58,16 @@ export default function AgentPackageDetailPage() {
                 {!hidden ? <MarkupBadge status={pkg.markup_status} testid="package-markup-status" /> : null}
               </div>
               {hidden ? <RetailOnly pkg={pkg} /> : <PriceBreakdown pkg={pkg} />}
+              {pkg.bookable ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Link to={`/agent/bookings/new?package=${pkg.id}`} data-testid="package-book-button">
+                    <Button className="w-full bg-stone-900 hover:bg-stone-800"><CalendarPlus size={14} className="mr-1" />Book</Button>
+                  </Link>
+                  <Button variant="outline" onClick={() => setQuoting(true)} data-testid="package-quote-button"><FileDown size={14} className="mr-1" />Quote</Button>
+                </div>
+              ) : null}
               {!hidden ? (
-                <Button onClick={() => setEditing(true)} className="w-full bg-teal-800 hover:bg-teal-900" data-testid="package-edit-markup">
+                <Button onClick={() => setEditing(true)} variant="outline" className="w-full" data-testid="package-edit-markup">
                   <Pencil size={14} className="mr-1" />{pkg.markup_amount != null ? "Edit markup" : "Set markup"}
                 </Button>
               ) : null}
@@ -71,6 +81,7 @@ export default function AgentPackageDetailPage() {
         </div>
       )}
       {editing && pkg ? <MarkupDialog pkg={pkg} bounds={data.markup_bounds} onClose={() => setEditing(false)} /> : null}
+      {quoting && pkg ? <QuoteDialog pkg={pkg} onClose={() => setQuoting(false)} /> : null}
     </AgentShell>
   );
 }

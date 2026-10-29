@@ -24,6 +24,7 @@ from routers.admin_settings import router as admin_settings_router
 from routers.admin_audit_logs import router as admin_audit_logs_router
 from routers.public import router as public_router
 from routers.agent import router as agent_router
+from routers.agent_bookings import router as agent_bookings_router
 
 
 ROOT_DIR = Path(__file__).parent
@@ -95,6 +96,7 @@ app.include_router(admin_settings_router)
 app.include_router(admin_audit_logs_router)
 app.include_router(public_router)
 app.include_router(agent_router)
+app.include_router(agent_bookings_router)
 
 # CORS — for credentialed cookies, "*" cannot coexist with allow_credentials.
 # Same-origin here (frontend and /api share the preview domain), but we still

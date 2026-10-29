@@ -68,6 +68,9 @@ def _booking_detail(b: dict, agent: dict, agent_user: dict, package: dict, custo
         "unit_agent_cost": str(money_from_bson(b["unit_agent_cost"])),
         "unit_guest_price": str(money_from_bson(b["unit_guest_price"])),
         "unit_commission_amount": str(money_from_bson(b["unit_commission_amount"])),
+        "total_markup_amount": (
+            str(money_from_bson(b["total_markup_amount"])) if b.get("total_markup_amount") is not None else None
+        ),
         "travelers": b.get("travelers", []),
         "status_history": b.get("status_history", []),
         "notes": b.get("notes"),
