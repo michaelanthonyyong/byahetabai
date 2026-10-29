@@ -51,6 +51,12 @@ export default function AdminSettingsPage() {
             {settings.maximum_topup_amount ? (
               <MoneyCard setting={settings.maximum_topup_amount} onSave={save} testid="maximum_topup_amount" />
             ) : null}
+            {settings.minimum_markup_amount ? (
+              <MoneyCard setting={settings.minimum_markup_amount} onSave={save} testid="minimum_markup_amount" min="0" />
+            ) : null}
+            {settings.maximum_markup_amount ? (
+              <MoneyCard setting={settings.maximum_markup_amount} onSave={save} testid="maximum_markup_amount" min="0" />
+            ) : null}
             {settings.commission_withdrawals_enabled ? (
               <ToggleCard setting={settings.commission_withdrawals_enabled} onSave={save} />
             ) : null}
@@ -123,7 +129,7 @@ function BrandCard({ setting, onSave }) {
   );
 }
 
-function MoneyCard({ setting, onSave, testid }) {
+function MoneyCard({ setting, onSave, testid, min = "1" }) {
   const [value, setValue] = useState(setting.value || "");
   const [busy, setBusy] = useState(false);
   useEffect(() => { setValue(setting.value || ""); }, [setting.updated_at]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -145,7 +151,7 @@ function MoneyCard({ setting, onSave, testid }) {
           <Label htmlFor={`v-${setting.key}`}>Amount (PHP)</Label>
           <Input
             id={`v-${setting.key}`}
-            type="number" min="1" step="0.01"
+            type="number" min={min} step="0.01"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             data-testid={`settings-${testid}-input`}

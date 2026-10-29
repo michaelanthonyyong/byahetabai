@@ -8,6 +8,12 @@ import LoginPage from "@/pages/LoginPage";
 import SetPasswordPage from "@/pages/SetPasswordPage";
 import ForbiddenPage from "@/pages/ForbiddenPage";
 import AgentDashboardPage from "@/pages/agent/AgentDashboardPage";
+import AgentCatalogPage from "@/pages/agent/AgentCatalogPage";
+import AgentPackageDetailPage from "@/pages/agent/AgentPackageDetailPage";
+import AgentFundRequestsPage from "@/pages/agent/AgentFundRequestsPage";
+import AgentLedgerPage from "@/pages/agent/AgentLedgerPage";
+import AgentProfilePage from "@/pages/agent/AgentProfilePage";
+import { PrivacyProvider } from "@/contexts/PrivacyContext";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import AdminAgentsPage from "@/pages/admin/AdminAgentsPage";
 import AdminAgentDetailPage from "@/pages/admin/AdminAgentDetailPage";
@@ -31,6 +37,10 @@ import PackagesPage from "@/pages/public/PackagesPage";
 import PackageDetailPage from "@/pages/public/PackageDetailPage";
 import ContactPage from "@/pages/public/ContactPage";
 
+const agentRoute = (el) => (
+  <RequireAuth roles={["agent"]}><PrivacyProvider>{el}</PrivacyProvider></RequireAuth>
+);
+
 function App() {
   return (
     <AuthProvider>
@@ -53,14 +63,12 @@ function App() {
           <Route path="/forbidden" element={<ForbiddenPage />} />
 
           {/* Agent portal */}
-          <Route
-            path="/agent"
-            element={
-              <RequireAuth roles={["agent"]}>
-                <AgentDashboardPage />
-              </RequireAuth>
-            }
-          />
+          <Route path="/agent" element={agentRoute(<AgentDashboardPage />)} />
+          <Route path="/agent/catalog" element={agentRoute(<AgentCatalogPage />)} />
+          <Route path="/agent/catalog/:id" element={agentRoute(<AgentPackageDetailPage />)} />
+          <Route path="/agent/top-ups" element={agentRoute(<AgentFundRequestsPage />)} />
+          <Route path="/agent/ledger" element={agentRoute(<AgentLedgerPage />)} />
+          <Route path="/agent/profile" element={agentRoute(<AgentProfilePage />)} />
 
           {/* Admin portal */}
           <Route

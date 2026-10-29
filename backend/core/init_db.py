@@ -123,6 +123,12 @@ INDEXES: dict[str, list[tuple[list, dict[str, Any]]]] = {
         ([("user_id", ASCENDING), ("kind", ASCENDING)], {"name": "user_kind"}),
         ([("expires_at", ASCENDING)], {"name": "ttl_expires_at", "expireAfterSeconds": 0}),
     ],
+    Collections.AGENT_PACKAGE_MARKUPS: [
+        (
+            [("agent_id", ASCENDING), ("package_id", ASCENDING)],
+            {"unique": True, "name": "uniq_agent_package"},
+        ),
+    ],
     "login_attempts": [
         ([("updated_at", ASCENDING)], {"name": "updated_at"}),
     ],
@@ -145,6 +151,16 @@ DEFAULT_SETTINGS = [
         "key": "maximum_topup_amount",
         "value": "1000000.00",
         "description": "Maximum PHP amount per fund request (parsed as Decimal).",
+    },
+    {
+        "key": "minimum_markup_amount",
+        "value": "0.00",
+        "description": "Lowest per-pax markup an agent may set on a package.",
+    },
+    {
+        "key": "maximum_markup_amount",
+        "value": "10000.00",
+        "description": "Highest per-pax markup an agent may set on a package.",
     },
     {
         "key": "brand",

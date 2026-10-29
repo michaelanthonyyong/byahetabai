@@ -77,6 +77,18 @@ SETTINGS_SCHEMA: dict[str, dict[str, Any]] = {
         "description": "Ceiling for every agent fund request.",
         "validate": lambda v: _validate_money(v, min_v=Decimal("1"), max_v=Decimal("10000000")),
     },
+    "minimum_markup_amount": {
+        "label": "Minimum agent markup per pax (PHP)",
+        "kind": "money",
+        "description": "Lowest markup an agent may add on top of the net cost, per person.",
+        "validate": lambda v: _validate_money(v, min_v=Decimal("0"), max_v=Decimal("1000000")),
+    },
+    "maximum_markup_amount": {
+        "label": "Maximum agent markup per pax (PHP)",
+        "kind": "money",
+        "description": "Highest markup an agent may add on top of the net cost, per person.",
+        "validate": lambda v: _validate_money(v, min_v=Decimal("0"), max_v=Decimal("1000000")),
+    },
     "commission_withdrawals_enabled": {
         "label": "Commission withdrawals enabled",
         "kind": "bool",
@@ -84,6 +96,12 @@ SETTINGS_SCHEMA: dict[str, dict[str, Any]] = {
         "validate": _validate_bool,
     },
 }
+
+
+BOUND_PAIRS = [
+    ("minimum_topup_amount", "maximum_topup_amount", "100.00", "1000000.00"),
+    ("minimum_markup_amount", "maximum_markup_amount", "0.00", "10000.00"),
+]
 
 
 # --- Access helpers -----------------------------------------------------
@@ -124,20 +142,21 @@ async def update_setting(key: str, value: Any) -> dict:
     validated = meta["validate"](value)
 
     # Cross-key rule: max ≥ min.
-    if key == "minimum_topup_amount":
-        current_max = await get_setting("maximum_topup_amount", "1000000.00")
-        if Decimal(str(validated)) > Decimal(str(current_max)):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Minimum ({validated}) cannot exceed current maximum ({current_max})",
-            )
-    if key == "maximum_topup_amount":
-        current_min = await get_setting("minimum_topup_amount", "100.00")
-        if Decimal(str(validated)) < Decimal(str(current_min)):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Maximum ({validated}) cannot be below current minimum ({current_min})",
-            )
+    for min_key, max_key, min_default, max_default in BOUND_PAIRS:
+        if key == min_key:
+            current_max = await get_setting(max_key, max_default)
+            if Decimal(str(validated)) > Decimal(str(current_max)):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Minimum ({validated}) cannot exceed current maximum ({current_max})",
+                )
+        if key == max_key:
+            current_min = await get_setting(min_key, min_default)
+            if Decimal(str(validated)) < Decimal(str(current_min)):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Maximum ({validated}) cannot be below current minimum ({current_min})",
+                )
 
     db = get_db()
     existing = await db[Collections.SETTINGS].find_one({"key": key})
@@ -166,4 +185,10 @@ async def update_setting(key: str, value: Any) -> dict:
 async def get_topup_bounds() -> tuple[Decimal, Decimal]:
     min_v = Decimal(str(await get_setting("minimum_topup_amount", "100.00")))
     max_v = Decimal(str(await get_setting("maximum_topup_amount", "1000000.00")))
+    return min_v, max_v
+
+
+async def get_markup_bounds() -> tuple[Decimal, Decimal]:
+    min_v = Decimal(str(await get_setting("minimum_markup_amount", "0.00")))
+    max_v = Decimal(str(await get_setting("maximum_markup_amount", "10000.00")))
     return min_v, max_v
