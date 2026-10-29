@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from core import booking_service
 from core.db import Collections, get_db
+from core.payment_service import booking_total_due
 from core.deps import require_role
 from models.base import money_from_bson
 
@@ -141,8 +142,18 @@ async def get_booking(booking_id: str, admin: dict = Depends(require_admin)):
     agent_user = await db[Collections.USERS].find_one({"_id": agent.get("user_id")}) if agent else None
     package = await db[Collections.PACKAGES].find_one({"_id": b["package_id"]}) or {}
     customer = await db[Collections.CUSTOMERS].find_one({"_id": b["customer_id"]}) or {}
+    payments = await db[Collections.BOOKING_PAYMENTS].find({"booking_id": booking_id}).sort("paid_on", 1).to_list(length=200)
+    paid = sum((money_from_bson(p["amount"]) for p in payments), Decimal("0.00"))
+    detail = _booking_detail(b, agent, agent_user, package, customer)
+    detail["payments"] = [
+        {"id": p["_id"], "amount": str(money_from_bson(p["amount"])), "method": p["method"],
+         "paid_on": p["paid_on"], "reference": p.get("reference")}
+        for p in payments
+    ]
+    detail["amount_paid"] = str(paid)
+    detail["balance_due"] = str(max(booking_total_due(b) - paid, Decimal("0.00")))
 
-    return {"booking": _booking_detail(b, agent, agent_user, package, customer)}
+    return {"booking": detail}
 
 
 @router.patch("/{booking_id}/status")
@@ -167,11 +178,9 @@ async def set_guest_payment_status(
     booking_id: str, payload: GuestPaymentStatusIn, request: Request,
     admin: dict = Depends(require_admin),
 ):
-    return await booking_service.set_guest_payment_status(
-        booking_id=booking_id, new_gps=payload.status,
-        note=payload.note, admin=admin,
-        admin_ip=(request.client.host if request.client else None),
-        admin_ua=request.headers.get("user-agent"),
+    raise HTTPException(
+        status_code=409,
+        detail="Customer payment status now follows the payments the agent records",
     )
 
 

@@ -5,6 +5,7 @@ import AgentShell from "@/components/agent/AgentShell";
 import { usePrivacy } from "@/contexts/PrivacyContext";
 import { LedgerStatus } from "@/pages/agent/AgentLedgerPage";
 import { fmtDate } from "@/pages/agent/AgentBookingsPage";
+import { PaymentsCard } from "@/components/agent/PaymentsCard";
 import { api, formatApiError } from "@/lib/api";
 import { downloadQuote } from "@/lib/quote";
 import { formatPHP } from "@/lib/money";
@@ -91,6 +92,7 @@ export default function AgentBookingDetailPage() {
               </ul>
               {b.notes ? <p className="text-sm text-stone-600 mt-3 whitespace-pre-line">{b.notes}</p> : null}
             </CardContent></Card>
+            <PaymentsCard bookingId={b.id} cancelled={b.status === "cancelled"} />
           </div>
           <Money b={b} />
         </div>

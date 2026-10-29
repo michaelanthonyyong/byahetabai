@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PrivacyToggle } from "@/components/agent/PrivacyToggle";
+import { NotificationBell } from "@/components/agent/NotificationBell";
 import { LayoutDashboard, Compass, Wallet, BookText, UserRound, LogOut, Users, ReceiptText } from "lucide-react";
 
 const NAV = [
@@ -57,6 +58,7 @@ const MobileHeader = ({ logout }) => (
     <div className="flex items-center justify-between px-4 py-3">
       <Link to="/agent" className="font-display text-base">Biyahe'Ta Bai · Agent</Link>
       <div className="flex items-center gap-2">
+        <NotificationBell testid="notification-bell-mobile" />
         <PrivacyToggle compact testid="privacy-toggle-mobile" />
         <button onClick={logout} className="text-xs text-stone-600" data-testid="agent-logout-button-mobile">
           Sign out
@@ -95,7 +97,7 @@ export default function AgentShell({ title, subtitle, actions, children }) {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {actions}
-                <div className="hidden lg:block"><PrivacyToggle /></div>
+                <div className="hidden lg:flex items-center gap-2"><NotificationBell /><PrivacyToggle /></div>
               </div>
             </div>
           </div>

@@ -129,6 +129,10 @@ INDEXES: dict[str, list[tuple[list, dict[str, Any]]]] = {
             {"unique": True, "name": "uniq_agent_package"},
         ),
     ],
+    Collections.BOOKING_PAYMENTS: [
+        ([("booking_id", ASCENDING), ("paid_on", ASCENDING)], {"name": "booking_paid_on"}),
+        ([("agent_id", ASCENDING)], {"name": "agent"}),
+    ],
     "login_attempts": [
         ([("updated_at", ASCENDING)], {"name": "updated_at"}),
     ],

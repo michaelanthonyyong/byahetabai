@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Compass, Wallet, BookText, AlertTriangle, ArrowRight, CalendarPlus } from "lucide-react";
 import { LedgerStatus } from "@/pages/agent/AgentLedgerPage";
 import { usePrivacy } from "@/contexts/PrivacyContext";
+import { AlertsList, useNotifications, useOpenAlert } from "@/components/agent/NotificationBell";
 
 const Stat = ({ label, value, hint, testid, masked }) => (
   <Card className="border-stone-200">
@@ -35,6 +36,23 @@ const QuickLink = ({ to, icon: Icon, title, text, testid }) => (
     <ArrowRight size={16} className="text-stone-400 transition-transform group-hover:translate-x-1" />
   </Link>
 );
+
+const AlertsCard = () => {
+  const { data } = useNotifications();
+  const openAlert = useOpenAlert();
+  const items = (data?.notifications || []).slice(0, 5);
+  return (
+    <Card className="border-stone-200" data-testid="dashboard-alerts">
+      <CardContent className="p-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+          <div className="font-medium">Alerts</div>
+          {data?.unread_count ? <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] text-white" data-testid="dashboard-alerts-unread">{data.unread_count} new</span> : null}
+        </div>
+        <AlertsList items={items} onPick={openAlert} empty="You'll see booking and top-up updates here." />
+      </CardContent>
+    </Card>
+  );
+};
 
 const RecentLedger = ({ rows }) => (
   <Card className="border-stone-200">
@@ -99,8 +117,17 @@ export default function AgentDashboardPage() {
               <Stat label="Pending top-ups" value={data.pending_fund_requests} testid="dashboard-pending-topups" hint="Awaiting admin approval" />
             </div>
 
+            <Link to="/agent/bookings?payment=owing" data-testid="dashboard-owing-link"
+              className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-teal-700">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.2em] text-stone-500">Customers still owe</div>
+                <div className="font-display text-2xl mt-1" data-testid="dashboard-customer-balance-due">{formatPHP(data.customer_balance_due)}</div>
+              </div>
+              <div className="text-xs text-stone-500 text-right">{data.bookings_owing} booking{data.bookings_owing === 1 ? "" : "s"} with a balance due <ArrowRight size={14} className="inline ml-1" /></div>
+            </Link>
+
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-              <div className="lg:col-span-3 min-w-0"><RecentLedger rows={data.recent_ledger} /></div>
+              <div className="lg:col-span-3 min-w-0 space-y-6"><AlertsCard /><RecentLedger rows={data.recent_ledger} /></div>
               <div className="lg:col-span-2 space-y-3 min-w-0">
                 <QuickLink to="/agent/bookings/new" icon={CalendarPlus} title="New booking" text="Book a package for a customer" testid="quick-link-new-booking" />
                 <QuickLink to="/agent/catalog" icon={Compass} title="Package catalog" text={hidden ? "Browse packages and prices" : `Set your markup (${formatPHP(data.markup_bounds.min)} – ${formatPHP(data.markup_bounds.max)} per pax)`} testid="quick-link-catalog" />

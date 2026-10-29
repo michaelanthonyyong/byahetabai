@@ -22,9 +22,10 @@ from fastapi import HTTPException
 from pymongo import ReturnDocument
 
 from core.db import Collections, get_db
+from core.notification_service import notify_agent
 from models.audit_log import AuditLog
 from models.base import money_from_bson, money_to_bson, utc_now_iso
-from models.booking import BookingStatus, BookingStatusHistoryEntry, GuestPaymentStatus
+from models.booking import BookingStatus, BookingStatusHistoryEntry
 from models.commission import CommissionStatus
 from models.transaction import FinancialTransaction, TransactionType
 
@@ -156,6 +157,7 @@ async def change_status(
         },
         admin_ip, admin_ua,
     )
+    await _notify_status(booking, new_status, refund_txn_id, reason)
     return {
         "status": new_status,
         "refund_transaction_id": refund_txn_id,
@@ -163,28 +165,20 @@ async def change_status(
     }
 
 
-async def set_guest_payment_status(
-    *, booking_id: str, new_gps: str, admin: dict,
-    admin_ip: Optional[str], admin_ua: Optional[str], note: Optional[str],
-) -> dict:
-    """Update the informational guest-payment status. No ledger impact."""
-    if new_gps not in {s.value for s in GuestPaymentStatus}:
-        raise HTTPException(status_code=400, detail="Invalid guest payment status")
-    db = get_db()
-    booking = await db[Collections.BOOKINGS].find_one({"_id": booking_id})
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    old = booking.get("guest_payment_status")
-    if old == new_gps:
-        return {"ok": True, "changed": False}
-    await db[Collections.BOOKINGS].update_one(
-        {"_id": booking_id},
-        {"$set": {"guest_payment_status": new_gps, "updated_at": utc_now_iso()}},
+async def _notify_status(booking: dict, new_status: str, refunded: Optional[str], reason: Optional[str]) -> None:
+    pkg = await get_db()[Collections.PACKAGES].find_one({"_id": booking["package_id"]}, {"title": 1})
+    label = f"{booking['reference_code']} · {(pkg or {}).get('title', 'Package')}"
+    if new_status == BookingStatus.CONFIRMED.value:
+        title, body = "Booking confirmed", f"{label} is confirmed."
+    elif new_status == BookingStatus.COMPLETED.value:
+        title, body = "Trip completed", f"{label} is marked completed."
+    elif new_status == BookingStatus.CANCELLED.value:
+        amt = money_from_bson(booking["total_agent_cost"]) or Decimal("0.00")
+        refund_text = f" ₱{amt:,.2f} was refunded to your booking balance." if refunded else " No refund was issued."
+        title, body = "Booking cancelled", f"{label} was cancelled.{refund_text}" + (f" Reason: {reason}" if reason else "")
+    else:
+        return
+    await notify_agent(
+        agent_id=booking["agent_id"], kind=f"booking.{new_status}", title=title, body=body,
+        ref_type="booking", ref_id=booking["_id"],
     )
-    await _write_audit(
-        admin, "booking.guest_payment_status", booking_id,
-        {"guest_payment_status": old},
-        {"guest_payment_status": new_gps, "note": note},
-        admin_ip, admin_ua,
-    )
-    return {"ok": True, "changed": True}

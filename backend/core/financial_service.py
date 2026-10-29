@@ -19,6 +19,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from core.db import Collections, get_db
+from core.notification_service import notify_agent
 from models.audit_log import AuditLog
 from models.base import money_from_bson, money_to_bson, utc_now_iso
 from models.transaction import (
@@ -235,6 +236,11 @@ async def approve_fund_request(
         }},
     )
     await db[Collections.AUDIT_LOGS].insert_one(audit.to_mongo())
+    await notify_agent(
+        agent_id=fr["agent_id"], kind="fund_request.approved", title="Top-up approved",
+        body=f"₱{amount:,.2f} was added to your booking balance." + (f" Note: {decision_note}" if decision_note else ""),
+        ref_type="fund_request", ref_id=fund_request_id,
+    )
 
     return {
         "transaction_id": txn.id,
@@ -286,6 +292,12 @@ async def reject_fund_request(
             after={"status": "rejected", "decision_note": decision_note.strip()},
             ip=admin_ip, user_agent=admin_ua,
         ).to_mongo()
+    )
+    amount = money_from_bson(fr["amount"]) or Decimal("0.00")
+    await notify_agent(
+        agent_id=fr["agent_id"], kind="fund_request.rejected", title="Top-up rejected",
+        body=f"Your ₱{amount:,.2f} top-up request was rejected. Reason: {decision_note.strip()}",
+        ref_type="fund_request", ref_id=fund_request_id,
     )
     return {"ok": True, "status": "rejected"}
 

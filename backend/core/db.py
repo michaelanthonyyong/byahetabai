@@ -43,6 +43,7 @@ class Collections:
     SETTINGS = "system_settings"
     CONTACT_MESSAGES = "contact_messages"
     AGENT_PACKAGE_MARKUPS = "agent_package_markups"
+    BOOKING_PAYMENTS = "booking_payments"
 
     @classmethod
     def all(cls) -> list[str]:
@@ -50,6 +51,6 @@ class Collections:
             cls.USERS, cls.AGENT_PROFILES, cls.DESTINATIONS, cls.PACKAGES,
             cls.CUSTOMERS, cls.BOOKINGS, cls.TRANSACTIONS, cls.FUND_REQUESTS,
             cls.COMMISSIONS, cls.COMMISSION_WITHDRAWALS, cls.NOTIFICATIONS,
-            cls.AUDIT_LOGS, cls.SETTINGS, cls.CONTACT_MESSAGES, cls.AGENT_PACKAGE_MARKUPS,
+            cls.AUDIT_LOGS, cls.SETTINGS, cls.CONTACT_MESSAGES, cls.AGENT_PACKAGE_MARKUPS, cls.BOOKING_PAYMENTS,
             "auth_tokens", "login_attempts",
         ]

@@ -20,6 +20,7 @@ class NotificationChannel(str, Enum):
 class Notification(BaseDocument):
     user_id: str = Field(description="FK → users.id (recipient)")
     channel: NotificationChannel = NotificationChannel.IN_PORTAL
+    kind: Optional[str] = Field(default=None, description="e.g. booking.confirmed, fund_request.approved")
 
     title: str
     body: str

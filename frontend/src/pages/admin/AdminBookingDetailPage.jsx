@@ -113,49 +113,27 @@ function ChangeStatusDialog({ booking, target, onDone }) {
   );
 }
 
-function GpsDialog({ booking, onDone }) {
-  const [open, setOpen] = useState(false);
-  const [gps, setGps] = useState(booking.guest_payment_status || "unpaid");
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const submit = async () => {
-    setBusy(true);
-    try {
-      await api.patch(`/admin/bookings/${booking.id}/guest-payment-status`, { status: gps, note });
-      toast.success("Payment status updated");
-      setOpen(false); setNote("");
-      onDone?.();
-    } catch (err) { toast.error(formatApiError(err)); }
-    finally { setBusy(false); }
-  };
+function GpsDialog({ booking }) {
+  const payments = booking.payments || [];
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" data-testid="admin-booking-gps-button">Update guest payment</Button>
+        <Button variant="outline" data-testid="admin-booking-gps-button">Customer payments</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Update guest payment status</DialogTitle>
-          <DialogDescription>Informational only — no ledger impact.</DialogDescription></DialogHeader>
-        <div className="grid grid-cols-3 rounded-lg border border-stone-200 bg-white p-1">
-          {["unpaid","partial","paid"].map((v) => (
-            <button key={v} type="button" onClick={() => setGps(v)}
-              data-testid={`admin-booking-gps-option-${v}`}
-              className={["py-1.5 text-sm rounded-md capitalize",
-                gps === v ? "bg-stone-900 text-white" : "text-stone-600"].join(" ")}>
-              {v}
-            </button>
-          ))}
+        <DialogHeader><DialogTitle>Customer payments</DialogTitle>
+          <DialogDescription>Recorded by the agent. The payment status follows these automatically.</DialogDescription></DialogHeader>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div><div className="text-xs text-stone-500">Paid</div><div className="font-mono" data-testid="admin-booking-amount-paid">{formatPHP(booking.amount_paid)}</div></div>
+          <div><div className="text-xs text-stone-500">Balance due</div><div className="font-mono" data-testid="admin-booking-balance-due">{formatPHP(booking.balance_due)}</div></div>
         </div>
-        <div className="space-y-2">
-          <Label>Note</Label>
-          <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)}
-            data-testid="admin-booking-gps-note-input" />
-        </div>
-        <DialogFooter>
-          <Button onClick={submit} disabled={busy} data-testid="admin-booking-gps-submit">
-            {busy ? "Saving…" : "Save"}
-          </Button>
-        </DialogFooter>
+        {payments.length === 0 ? <p className="text-sm text-stone-500">No payments recorded.</p> : (
+          <ul className="divide-y divide-stone-100 text-sm" data-testid="admin-booking-payments">
+            {payments.map((p) => (
+              <li key={p.id} className="py-2 flex justify-between"><span>{p.paid_on} · {p.method.replace("_", " ")}{p.reference ? ` · ${p.reference}` : ""}</span><span className="font-mono">{formatPHP(p.amount)}</span></li>
+            ))}
+          </ul>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -203,7 +181,7 @@ export default function AdminBookingDetailPage() {
       title={booking.reference_code}
       actions={
         <div className="flex flex-wrap gap-2">
-          <GpsDialog booking={booking} onDone={refresh} />
+          <GpsDialog booking={booking} />
           {nextStatuses.map((t) => (
             <ChangeStatusDialog key={t.v} booking={booking} target={t} onDone={refresh} />
           ))}
@@ -219,6 +197,7 @@ export default function AdminBookingDetailPage() {
           <Card><CardHeader className="pb-2">
             <CardDescription>Guest payment</CardDescription>
             <CardTitle><Badge className={GPS_TONES[booking.guest_payment_status]}>{booking.guest_payment_status}</Badge></CardTitle>
+            <div className="text-xs text-stone-500 mt-1">Due {formatPHP(booking.balance_due)}</div>
           </CardHeader></Card>
           <Card><CardHeader className="pb-2">
             <CardDescription>Pax</CardDescription>

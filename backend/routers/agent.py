@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from core.db import Collections, get_db
 from core.deps import require_role
+from core.payment_service import booking_total_due, paid_totals
 from core.settings_service import get_markup_bounds, get_topup_bounds
 from models.audit_log import AuditLog
 from models.base import money_from_bson, money_to_bson, utc_now_iso
@@ -188,6 +189,11 @@ async def dashboard(ctx: dict = Depends(current_agent)):
     status_counts: dict[str, int] = {}
     for r in rows:
         status_counts[r["status"]] = status_counts.get(r["status"], 0) + 1
+    live = await db[Collections.BOOKINGS].find(
+        {"agent_id": agent_id, "status": {"$ne": "cancelled"}, "guest_payment_status": {"$ne": "paid"}},
+    ).to_list(length=None)
+    paid = await paid_totals([b["_id"] for b in live])
+    outstanding = sum((max(booking_total_due(b) - paid.get(b["_id"], ZERO), ZERO) for b in live), ZERO)
     return {
         "agent": {
             "display_name": profile.get("display_name"),
@@ -199,6 +205,8 @@ async def dashboard(ctx: dict = Depends(current_agent)):
         "total_bonus_commission": _q(sum((Decimal(r["bonus_commission"]) for r in rows), ZERO)),
         "bookings_total": len(rows),
         "bookings_by_status": status_counts,
+        "customer_balance_due": _q(outstanding),
+        "bookings_owing": sum(1 for b in live if booking_total_due(b) - paid.get(b["_id"], ZERO) > 0),
         "pending_fund_requests": await db[Collections.FUND_REQUESTS].count_documents(
             {"agent_id": agent_id, "status": "pending"}
         ),
@@ -392,6 +400,48 @@ async def wallet_transactions(
         ],
         "page": page, "page_size": page_size, "total": total,
     }
+
+
+# --- notifications -------------------------------------------------------
+
+@router.get("/notifications")
+async def list_notifications(ctx: dict = Depends(current_agent), limit: int = Query(default=20, ge=1, le=100)):
+    db = get_db()
+    uid = ctx["user"]["_id"]
+    rows = await db[Collections.NOTIFICATIONS].find({"user_id": uid}).sort("created_at", -1).limit(limit).to_list(length=limit)
+    return {
+        "notifications": [
+            {
+                "id": n["_id"], "kind": n.get("kind"), "title": n.get("title"), "body": n.get("body"),
+                "ref_type": n.get("ref_type"), "ref_id": n.get("ref_id"),
+                "is_read": bool(n.get("is_read")), "created_at": n.get("created_at"),
+            }
+            for n in rows
+        ],
+        "unread_count": await db[Collections.NOTIFICATIONS].count_documents({"user_id": uid, "is_read": False}),
+    }
+
+
+@router.post("/notifications/read-all")
+async def read_all_notifications(ctx: dict = Depends(current_agent)):
+    now = utc_now_iso()
+    res = await get_db()[Collections.NOTIFICATIONS].update_many(
+        {"user_id": ctx["user"]["_id"], "is_read": False},
+        {"$set": {"is_read": True, "read_at": now, "updated_at": now}},
+    )
+    return {"ok": True, "updated": res.modified_count}
+
+
+@router.post("/notifications/{notification_id}/read")
+async def read_notification(notification_id: str, ctx: dict = Depends(current_agent)):
+    now = utc_now_iso()
+    res = await get_db()[Collections.NOTIFICATIONS].update_one(
+        {"_id": notification_id, "user_id": ctx["user"]["_id"]},
+        {"$set": {"is_read": True, "read_at": now, "updated_at": now}},
+    )
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {"ok": True}
 
 
 # --- profile -------------------------------------------------------------
