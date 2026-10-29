@@ -5,15 +5,22 @@ accepts an agent id from the client.
 """
 from __future__ import annotations
 
+import io
 import re
+import uuid
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
+from PIL import Image
 from pydantic import BaseModel, Field
 
+from core.agent_brand import brand_name
 from core.db import Collections, get_db
 from core.deps import require_role
+from core.notification_service import notify_agent
+from core.storage import get_object, put_object
 from core.payment_service import booking_total_due, paid_totals
 from core.settings_service import get_markup_bounds, get_topup_bounds
 from models.audit_log import AuditLog
@@ -51,6 +58,7 @@ class FundRequestIn(BaseModel):
 class ProfileIn(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=40)
     address: Optional[str] = Field(default=None, max_length=300)
+    business_name: Optional[str] = Field(default=None, max_length=120)
 
 
 # --- helpers -------------------------------------------------------------
@@ -172,6 +180,52 @@ def _fr_out(fr: dict) -> dict:
     }
 
 
+# --- trip payment reminders ----------------------------------------------
+
+DUE_WINDOW_DAYS = 14
+
+
+async def _trips_due(agent_id: str) -> list[dict]:
+    db = get_db()
+    today = datetime.now(timezone.utc).date()
+    rows = await db[Collections.BOOKINGS].find({
+        "agent_id": agent_id, "status": {"$in": ["pending", "confirmed"]},
+        "travel_start_date": {"$gte": today.isoformat(), "$lte": (today + timedelta(days=DUE_WINDOW_DAYS)).isoformat()},
+    }).sort("travel_start_date", 1).to_list(length=200)
+    paid = await paid_totals([b["_id"] for b in rows])
+    pkgs = {p["_id"]: p["title"] async for p in db[Collections.PACKAGES].find({"_id": {"$in": [b["package_id"] for b in rows]}}, {"title": 1})}
+    custs = {c["_id"]: c async for c in db[Collections.CUSTOMERS].find({"_id": {"$in": [b["customer_id"] for b in rows]}})}
+    out = []
+    for b in rows:
+        due = booking_total_due(b) - paid.get(b["_id"], ZERO)
+        if due <= 0:
+            continue
+        c = custs.get(b["customer_id"]) or {}
+        out.append({
+            "booking_id": b["_id"], "reference_code": b["reference_code"],
+            "customer_name": f"{c.get('first_name', '')} {c.get('last_name', '')}".strip(),
+            "package_title": pkgs.get(b["package_id"], "Package"),
+            "travel_start_date": b["travel_start_date"],
+            "days_left": (datetime.fromisoformat(b["travel_start_date"]).date() - today).days,
+            "balance_due": _q(due),
+        })
+    return out
+
+
+async def _ensure_due_alerts(agent_id: str, trips: list[dict]) -> None:
+    db = get_db()
+    for t in trips:
+        if await db[Collections.NOTIFICATIONS].find_one({"ref_id": t["booking_id"], "kind": "booking.payment_due"}, {"_id": 1}):
+            continue
+        days = t["days_left"]
+        when = "today" if days == 0 else "tomorrow" if days == 1 else f"in {days} days"
+        await notify_agent(
+            agent_id=agent_id, kind="booking.payment_due", title="Trip coming up, balance unpaid",
+            body=f"{t['reference_code']} · {t['customer_name']} travels {when} and still owes ₱{Decimal(t['balance_due']):,.2f}.",
+            ref_type="booking", ref_id=t["booking_id"],
+        )
+
+
 # --- dashboard -----------------------------------------------------------
 
 @router.get("/dashboard")
@@ -194,11 +248,14 @@ async def dashboard(ctx: dict = Depends(current_agent)):
     ).to_list(length=None)
     paid = await paid_totals([b["_id"] for b in live])
     outstanding = sum((max(booking_total_due(b) - paid.get(b["_id"], ZERO), ZERO) for b in live), ZERO)
+    trips_due = await _trips_due(agent_id)
+    await _ensure_due_alerts(agent_id, trips_due)
     return {
         "agent": {
             "display_name": profile.get("display_name"),
             "agency_name": profile.get("agency_name"),
         },
+        "trips_due": trips_due,
         "booking_balance": _q(_m(profile["booking_account"]["balance"])),
         "total_earned": _q(sum((Decimal(r["earned"]) for r in rows), ZERO)),
         "total_markup_profit": _q(sum((Decimal(r["markup_profit"]) for r in rows), ZERO)),
@@ -408,6 +465,7 @@ async def wallet_transactions(
 async def list_notifications(ctx: dict = Depends(current_agent), limit: int = Query(default=20, ge=1, le=100)):
     db = get_db()
     uid = ctx["user"]["_id"]
+    await _ensure_due_alerts(ctx["profile"]["_id"], await _trips_due(ctx["profile"]["_id"]))
     rows = await db[Collections.NOTIFICATIONS].find({"user_id": uid}).sort("created_at", -1).limit(limit).to_list(length=limit)
     return {
         "notifications": [
@@ -454,6 +512,10 @@ def _profile_out(ctx: dict) -> dict:
         "agency_name": p.get("agency_name"),
         "phone": p.get("phone"),
         "address": p.get("address"),
+        "business_name": p.get("business_name"),
+        "brand_name": brand_name(p),
+        "has_logo": bool(p.get("logo_path")),
+        "logo_updated_at": p.get("logo_updated_at"),
         "status": p.get("status"),
         "member_since": p.get("created_at"),
     }
@@ -478,5 +540,61 @@ async def update_profile(payload: ProfileIn, request: Request, ctx: dict = Depen
         {"$set": {**changes, "updated_at": utc_now_iso()}},
     )
     await _audit(ctx, "agent.profile.update", "agent", ctx["profile"]["_id"], before, changes, request)
+    ctx["profile"].update(changes)
+    return {"profile": _profile_out(ctx)}
+
+
+LOGO_MAX_BYTES = 2 * 1024 * 1024
+LOGO_FORMATS = {"PNG": ("png", "image/png"), "JPEG": ("jpg", "image/jpeg")}
+
+
+@router.post("/profile/logo")
+async def upload_logo(request: Request, file: UploadFile = File(...), ctx: dict = Depends(current_agent)):
+    data = await file.read(LOGO_MAX_BYTES + 1)
+    if len(data) > LOGO_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="Logo must be 2 MB or smaller")
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            fmt = img.format
+            img.verify()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Upload a PNG or JPG image")
+    if fmt not in LOGO_FORMATS:
+        raise HTTPException(status_code=400, detail="Upload a PNG or JPG image")
+    ext, ctype = LOGO_FORMATS[fmt]
+    agent_id = ctx["profile"]["_id"]
+    try:
+        path = await put_object(f"logos/{agent_id}/{uuid.uuid4()}.{ext}", data, ctype)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Could not store the logo. Please try again.")
+    now = utc_now_iso()
+    changes = {"logo_path": path, "logo_content_type": ctype, "logo_updated_at": now}
+    await get_db()[Collections.AGENT_PROFILES].update_one({"_id": agent_id}, {"$set": {**changes, "updated_at": now}})
+    await _audit(ctx, "agent.logo.upload", "agent", agent_id, {"logo_path": ctx["profile"].get("logo_path")},
+                 {"logo_path": path, "size": len(data), "filename": file.filename}, request)
+    ctx["profile"].update(changes)
+    return {"profile": _profile_out(ctx)}
+
+
+@router.get("/profile/logo")
+async def get_logo(ctx: dict = Depends(current_agent)):
+    p = ctx["profile"]
+    if not p.get("logo_path"):
+        raise HTTPException(status_code=404, detail="No logo uploaded")
+    try:
+        data = await get_object(p["logo_path"])
+    except Exception:
+        raise HTTPException(status_code=502, detail="Could not load the logo")
+    return Response(content=data, media_type=p.get("logo_content_type") or "image/png",
+                    headers={"Cache-Control": "private, max-age=86400"})
+
+
+@router.delete("/profile/logo")
+async def remove_logo(request: Request, ctx: dict = Depends(current_agent)):
+    agent_id = ctx["profile"]["_id"]
+    before = ctx["profile"].get("logo_path")
+    changes = {"logo_path": None, "logo_content_type": None, "logo_updated_at": utc_now_iso()}
+    await get_db()[Collections.AGENT_PROFILES].update_one({"_id": agent_id}, {"$set": changes})
+    await _audit(ctx, "agent.logo.remove", "agent", agent_id, {"logo_path": before}, None, request)
     ctx["profile"].update(changes)
     return {"profile": _profile_out(ctx)}

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { formatPHP } from "@/lib/money";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Compass, Wallet, BookText, AlertTriangle, ArrowRight, CalendarPlus } from "lucide-react";
+import { Compass, Wallet, BookText, AlertTriangle, ArrowRight, CalendarPlus, AlarmClock } from "lucide-react";
 import { LedgerStatus } from "@/pages/agent/AgentLedgerPage";
 import { usePrivacy } from "@/contexts/PrivacyContext";
 import { AlertsList, useNotifications, useOpenAlert } from "@/components/agent/NotificationBell";
@@ -49,6 +49,30 @@ const AlertsCard = () => {
           {data?.unread_count ? <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] text-white" data-testid="dashboard-alerts-unread">{data.unread_count} new</span> : null}
         </div>
         <AlertsList items={items} onPick={openAlert} empty="You'll see booking and top-up updates here." />
+      </CardContent>
+    </Card>
+  );
+};
+
+const TripsDue = ({ trips }) => {
+  if (!trips.length) return null;
+  return (
+    <Card className="border-amber-300 bg-amber-50/50" data-testid="dashboard-trips-due">
+      <CardContent className="p-0">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-amber-200">
+          <AlarmClock size={16} className="text-amber-700" />
+          <div className="font-medium text-amber-900">Trips in the next 2 weeks with a balance due</div>
+        </div>
+        {trips.map((t) => (
+          <Link key={t.booking_id} to={`/agent/bookings/${t.booking_id}`} data-testid={`trip-due-${t.booking_id}`}
+            className="flex items-center justify-between gap-3 px-5 py-3 border-b border-amber-100 last:border-0 hover:bg-amber-50 transition-colors">
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate">{t.customer_name} · {t.package_title}</div>
+              <div className="text-xs text-stone-600"><span className="font-mono">{t.reference_code}</span> · travels {t.days_left === 0 ? "today" : t.days_left === 1 ? "tomorrow" : `in ${t.days_left} days`}</div>
+            </div>
+            <div className="text-sm font-semibold text-amber-800 shrink-0">{formatPHP(t.balance_due)}</div>
+          </Link>
+        ))}
       </CardContent>
     </Card>
   );
@@ -116,6 +140,8 @@ export default function AgentDashboardPage() {
               <Stat label="Bookings" value={data.bookings_total} testid="dashboard-bookings-total" hint={`${data.bookings_by_status.confirmed || 0} confirmed · ${data.bookings_by_status.pending || 0} pending`} />
               <Stat label="Pending top-ups" value={data.pending_fund_requests} testid="dashboard-pending-topups" hint="Awaiting admin approval" />
             </div>
+
+            <TripsDue trips={data.trips_due || []} />
 
             <Link to="/agent/bookings?payment=owing" data-testid="dashboard-owing-link"
               className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-teal-700">

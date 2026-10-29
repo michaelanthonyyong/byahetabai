@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import AgentShell from "@/components/agent/AgentShell";
+import { BrandingCard } from "@/components/agent/BrandingCard";
+import { useAgentProfile } from "@/components/agent/AgentBrand";
 import { api, formatApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,10 +79,7 @@ const PasswordForm = () => {
 };
 
 export default function AgentProfilePage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["agent-profile"],
-    queryFn: () => api.get("/agent/profile").then((r) => r.data.profile),
-  });
+  const { data, isLoading } = useAgentProfile();
   return (
     <AgentShell subtitle="Account" title="My profile">
       {isLoading || !data ? <div className="h-40 rounded-xl bg-stone-100 animate-pulse max-w-4xl" /> : (
@@ -93,6 +92,7 @@ export default function AgentProfilePage() {
               <ReadOnly label="Member since" value={data.member_since ? new Date(data.member_since).toLocaleDateString() : ""} />
             </CardContent>
           </Card>
+          <BrandingCard profile={data} />
           <Card className="border-stone-200">
             <CardHeader><CardTitle className="text-base">Contact details</CardTitle><CardDescription>Name and agency are managed by the admin.</CardDescription></CardHeader>
             <CardContent><ContactForm profile={data} /></CardContent>

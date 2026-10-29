@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 
 from core.db import get_client, get_db
 from core.init_db import init_db
+from core.storage import init_storage
 from routers.auth import router as auth_router
 from routers.admin_users import router as admin_agents_router
 from routers.admin_dashboard import router as admin_dashboard_router
@@ -128,6 +129,7 @@ logger = logging.getLogger(__name__)
 async def startup_init_db():
     """Idempotent bootstrap of collections, indexes and default settings."""
     await init_db()
+    init_storage()
 
 
 @app.on_event("shutdown")

@@ -55,6 +55,12 @@ class AgentProfile(BaseDocument):
     address: Optional[str] = None
     status: AgentStatus = AgentStatus.INVITED
 
+    # Agent-controlled branding for customer documents and the portal.
+    business_name: Optional[str] = None
+    logo_path: Optional[str] = None
+    logo_content_type: Optional[str] = None
+    logo_updated_at: Optional[str] = None
+
     booking_account: AgentAccount = Field(default_factory=lambda: AgentAccount(kind="booking"))
     commission_account: AgentAccount = Field(
         default_factory=lambda: AgentAccount(kind="commission")

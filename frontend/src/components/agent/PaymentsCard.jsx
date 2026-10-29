@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, FileDown } from "lucide-react";
+import { downloadQuote } from "@/lib/quote";
 import { toast } from "sonner";
 
 export const METHODS = { cash: "Cash", gcash: "GCash", bank_transfer: "Bank transfer", card: "Card", other: "Other" };
@@ -102,6 +103,10 @@ export const PaymentsCard = ({ bookingId, cancelled }) => {
       toast.error(formatApiError(err));
     }
   };
+  const receipt = async (p) => {
+    const err = await downloadQuote({ method: "get", url: `/agent/bookings/${bookingId}/payments/${p.id}/receipt.pdf` });
+    if (err) toast.error(err); else toast.success("Receipt downloaded.");
+  };
   if (!data) return <div className="h-32 rounded-xl bg-stone-100 animate-pulse" />;
   const canAdd = !cancelled && parseFloat(data.balance_due) > 0;
   return (
@@ -121,7 +126,10 @@ export const PaymentsCard = ({ bookingId, cancelled }) => {
                 <div className="font-medium">{formatPHP(p.amount)} · {METHODS[p.method] || p.method}</div>
                 <div className="text-xs text-stone-500 truncate">{fmtDate(p.paid_on)}{p.reference ? ` · Ref ${p.reference}` : ""}{p.note ? ` · ${p.note}` : ""}</div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => remove(p)} data-testid={`payment-delete-${p.id}`}><Trash2 size={14} /></Button>
+              <div className="flex shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => receipt(p)} title="Download receipt" data-testid={`payment-receipt-${p.id}`}><FileDown size={14} className="mr-1" />Receipt</Button>
+                <Button variant="ghost" size="sm" onClick={() => remove(p)} data-testid={`payment-delete-${p.id}`}><Trash2 size={14} /></Button>
+              </div>
             </li>
           ))}
         </ul>

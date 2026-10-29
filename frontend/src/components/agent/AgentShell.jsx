@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PrivacyToggle } from "@/components/agent/PrivacyToggle";
 import { NotificationBell } from "@/components/agent/NotificationBell";
+import { AgentLogo, useAgentProfile } from "@/components/agent/AgentBrand";
 import { LayoutDashboard, Compass, Wallet, BookText, UserRound, LogOut, Users, ReceiptText } from "lucide-react";
 
 const NAV = [
@@ -20,12 +21,17 @@ const navCls = ({ isActive }) =>
     isActive ? "bg-teal-800 text-white" : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
   ].join(" ");
 
-const Sidebar = ({ user, logout }) => (
+const Sidebar = ({ user, logout }) => {
+  const { data: profile } = useAgentProfile();
+  return (
   <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-stone-200 bg-white">
     <div className="px-6 py-5 border-b border-stone-200">
-      <Link to="/agent" className="block">
-        <div className="text-[10px] uppercase tracking-[0.25em] text-teal-700">Agent portal</div>
-        <div className="font-display text-lg text-stone-900 mt-1">Biyahe'Ta Bai</div>
+      <Link to="/agent" className="flex items-center gap-3">
+        <AgentLogo profile={profile} className="h-11 w-11 shrink-0" />
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.25em] text-teal-700">Agent portal</div>
+          <div className="font-display text-lg text-stone-900 mt-1 leading-tight break-words" data-testid="agent-brand-name">{profile?.brand_name || "Biyahe'Ta Bai"}</div>
+        </div>
       </Link>
     </div>
     <nav className="flex-1 px-3 py-4 space-y-1">
@@ -51,13 +57,19 @@ const Sidebar = ({ user, logout }) => (
       </button>
     </div>
   </aside>
-);
+  );
+};
 
-const MobileHeader = ({ logout }) => (
+const MobileHeader = ({ logout }) => {
+  const { data: profile } = useAgentProfile();
+  return (
   <header className="border-b border-stone-200 bg-white lg:hidden">
-    <div className="flex items-center justify-between px-4 py-3">
-      <Link to="/agent" className="font-display text-base">Biyahe'Ta Bai · Agent</Link>
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between gap-2 px-4 py-3">
+      <Link to="/agent" className="flex items-center gap-2 min-w-0 font-display text-base">
+        <AgentLogo profile={profile} className="h-8 w-8 shrink-0" testid="agent-brand-logo-mobile" />
+        <span className="truncate">{profile?.brand_name || "Biyahe'Ta Bai"}</span>
+      </Link>
+      <div className="flex items-center gap-2 shrink-0">
         <NotificationBell testid="notification-bell-mobile" />
         <PrivacyToggle compact testid="privacy-toggle-mobile" />
         <button onClick={logout} className="text-xs text-stone-600" data-testid="agent-logout-button-mobile">
@@ -77,7 +89,8 @@ const MobileHeader = ({ logout }) => (
       ))}
     </div>
   </header>
-);
+  );
+};
 
 export default function AgentShell({ title, subtitle, actions, children }) {
   const { user, logout } = useAuth();

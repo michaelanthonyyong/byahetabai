@@ -37,6 +37,8 @@ export function humanAction(a) {
     "quote.generate": "Agent generated customer quote",
     "booking.payment.add": "Agent recorded customer payment",
     "booking.payment.delete": "Agent removed customer payment",
+    "agent.logo.upload": "Agent uploaded business logo",
+    "agent.logo.remove": "Agent removed business logo",
     "booking.create": "Created booking",
     "booking.confirm": "Confirmed booking",
     "settings.update": "Updated system setting",

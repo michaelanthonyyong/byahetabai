@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/admin";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bell, CheckCircle2, XCircle, Flag, Wallet } from "lucide-react";
+import { Bell, CheckCircle2, XCircle, Flag, Wallet, AlarmClock } from "lucide-react";
 
 const ICONS = {
   "booking.confirmed": [CheckCircle2, "text-emerald-600"],
@@ -12,6 +12,7 @@ const ICONS = {
   "booking.cancelled": [XCircle, "text-red-600"],
   "fund_request.approved": [Wallet, "text-emerald-600"],
   "fund_request.rejected": [Wallet, "text-red-600"],
+  "booking.payment_due": [AlarmClock, "text-amber-600"],
 };
 
 export const useNotifications = () =>

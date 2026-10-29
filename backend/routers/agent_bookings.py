@@ -13,8 +13,8 @@ from pydantic import BaseModel, EmailStr, Field
 from core.agent_booking_service import create_agent_booking, parse_future_date, resolve_sellable_package
 from core.db import Collections, get_db
 from core.payment_service import booking_total_due, derive_status, paid_totals, payments_total, sync_payment_status
-from core.quote_pdf import build_quote_pdf
-from core.settings_service import get_setting
+from core.quote_pdf import build_quote_pdf, build_receipt_pdf
+from core.agent_brand import agent_brand
 from models.base import money_from_bson, utc_now_iso
 from models.customer import Customer
 from models.booking_payment import BookingPayment, PaymentMethod
@@ -143,15 +143,19 @@ async def _quote_response(ctx: dict, pkg: dict, unit_retail: Decimal, pax: int,
                           customer_name: Optional[str], travel_date: Optional[str], quote_no: str) -> Response:
     db = get_db()
     dest = await db[Collections.DESTINATIONS].find_one({"_id": pkg["destination_id"]})
-    brand = await get_setting("brand", {}) or {}
+    brand = await agent_brand(ctx["profile"], ctx["user"].get("email"))
     pdf = build_quote_pdf(
-        brand=brand, agent=ctx["profile"], agent_email=ctx["user"].get("email"),
+        brand=brand,
         pkg=pkg, destination=dest, unit_retail=unit_retail, pax=pax,
         customer_name=customer_name, travel_date=travel_date, quote_no=quote_no,
     )
+    return _pdf(pdf, f"quote-{quote_no}.pdf")
+
+
+def _pdf(content: bytes, filename: str) -> Response:
     return Response(
-        content=pdf, media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="quote-{quote_no}.pdf"'},
+        content=content, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -340,6 +344,30 @@ async def delete_payment(booking_id: str, payment_id: str, request: Request, ctx
                  {"payment_id": payment_id, "amount": _q(_m(p["amount"])), "method": p["method"]},
                  {"guest_payment_status": status}, request)
     return await _payments_payload(b)
+
+
+@router.get("/bookings/{booking_id}/payments/{payment_id}/receipt.pdf")
+async def payment_receipt(booking_id: str, payment_id: str, ctx: dict = Depends(current_agent)):
+    db = get_db()
+    b = await _own_booking(ctx["profile"]["_id"], booking_id)
+    rows = await db[Collections.BOOKING_PAYMENTS].find({"booking_id": booking_id}).sort([("paid_on", 1), ("created_at", 1)]).to_list(length=200)
+    idx = next((i for i, p in enumerate(rows) if p["_id"] == payment_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    history = [{"paid_on": p["paid_on"], "method": p["method"], "amount": _m(p["amount"])} for p in rows[: idx + 1]]
+    p = rows[idx]
+    pkg = await db[Collections.PACKAGES].find_one({"_id": b["package_id"]}, {"title": 1})
+    cust = await db[Collections.CUSTOMERS].find_one({"_id": b["customer_id"]})
+    receipt_no = f"{b['reference_code']}-R{idx + 1}"
+    pdf = build_receipt_pdf(
+        brand=await agent_brand(ctx["profile"], ctx["user"].get("email")),
+        receipt_no=receipt_no, booking=b, pkg_title=(pkg or {}).get("title", "Package"),
+        customer_name=f"{(cust or {}).get('first_name', '')} {(cust or {}).get('last_name', '')}".strip() or "Customer",
+        payment={"paid_on": p["paid_on"], "method": p["method"], "reference": p.get("reference"), "amount": _m(p["amount"])},
+        history=history, total_due=booking_total_due(b),
+        paid_to_date=sum((h["amount"] for h in history), Decimal("0.00")),
+    )
+    return _pdf(pdf, f"receipt-{receipt_no}.pdf")
 
 
 # --- quotes --------------------------------------------------------------
