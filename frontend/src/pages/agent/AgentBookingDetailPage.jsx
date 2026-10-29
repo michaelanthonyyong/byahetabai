@@ -11,7 +11,8 @@ import { downloadQuote } from "@/lib/quote";
 import { formatPHP } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, FileDown, Loader2 } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, Link2 } from "lucide-react";
+import { ShareLinkDialog } from "@/components/agent/ShareLinkDialog";
 import { toast } from "sonner";
 
 const Line = ({ label, value, strong, testid }) => (
@@ -48,6 +49,7 @@ const STATUS_HINT = {
 export default function AgentBookingDetailPage() {
   const { id } = useParams();
   const [busy, setBusy] = useState(false);
+  const [shareBody, setShareBody] = useState(null);
   const { data: b, isLoading, error } = useQuery({
     queryKey: ["agent-booking", id],
     queryFn: () => api.get(`/agent/bookings/${id}`).then((r) => r.data.booking),
@@ -66,6 +68,9 @@ export default function AgentBookingDetailPage() {
         <Link to="/agent/bookings" data-testid="booking-back-link"><Button variant="ghost" size="sm"><ArrowLeft size={14} className="mr-1" />Bookings</Button></Link>
         {b ? <Button variant="outline" size="sm" onClick={quote} disabled={busy} data-testid="booking-download-quote">
           {busy ? <Loader2 size={14} className="animate-spin mr-1" /> : <FileDown size={14} className="mr-1" />}Customer quote
+        </Button> : null}
+        {b ? <Button variant="outline" size="sm" onClick={() => setShareBody({ kind: "booking_quote", booking_id: b.id })} data-testid="booking-share-quote">
+          <Link2 size={14} className="mr-1" />Quote link
         </Button> : null}
       </>}>
       {isLoading ? <div className="h-60 rounded-xl bg-stone-100 animate-pulse max-w-5xl" /> : error ? (
@@ -97,6 +102,7 @@ export default function AgentBookingDetailPage() {
           <Money b={b} />
         </div>
       )}
+      {shareBody ? <ShareLinkDialog body={shareBody} onClose={() => setShareBody(null)} /> : null}
     </AgentShell>
   );
 }

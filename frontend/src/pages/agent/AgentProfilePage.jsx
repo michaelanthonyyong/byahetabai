@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import AgentShell from "@/components/agent/AgentShell";
 import { BrandingCard } from "@/components/agent/BrandingCard";
+import { SharedLinksCard } from "@/components/agent/SharedLinksCard";
 import { useAgentProfile } from "@/components/agent/AgentBrand";
 import { api, formatApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -93,6 +94,7 @@ export default function AgentProfilePage() {
             </CardContent>
           </Card>
           <BrandingCard profile={data} />
+          <SharedLinksCard />
           <Card className="border-stone-200">
             <CardHeader><CardTitle className="text-base">Contact details</CardTitle><CardDescription>Name and agency are managed by the admin.</CardDescription></CardHeader>
             <CardContent><ContactForm profile={data} /></CardContent>

@@ -31,12 +31,13 @@ def peso(v: Decimal) -> str:
     return f"PHP {v:,.2f}"
 
 
-def _styles():
+def _styles(color=TEAL):
     base = getSampleStyleSheet()
     return {
-        "brand": ParagraphStyle("brand", parent=base["Title"], fontName="Helvetica-Bold", fontSize=18, textColor=TEAL, alignment=0, spaceAfter=2, leading=22),
+        "color": color,
+        "brand": ParagraphStyle("brand", parent=base["Title"], fontName="Helvetica-Bold", fontSize=18, textColor=color, alignment=0, spaceAfter=2, leading=22),
         "tag": ParagraphStyle("tag", parent=base["Normal"], fontSize=8.5, textColor=STONE, leading=11),
-        "h": ParagraphStyle("h", parent=base["Heading2"], fontName="Helvetica-Bold", fontSize=12, textColor=TEAL, spaceBefore=10, spaceAfter=4),
+        "h": ParagraphStyle("h", parent=base["Heading2"], fontName="Helvetica-Bold", fontSize=12, textColor=color, spaceBefore=10, spaceAfter=4),
         "title": ParagraphStyle("title", parent=base["Heading1"], fontName="Helvetica-Bold", fontSize=16, spaceAfter=2),
         "body": ParagraphStyle("body", parent=base["Normal"], fontSize=9.5, leading=13),
         "small": ParagraphStyle("small", parent=base["Normal"], fontSize=8, leading=11, textColor=STONE),
@@ -61,6 +62,13 @@ def _logo(data: Optional[bytes]):
         return None
 
 
+def _brand_color(brand: dict):
+    try:
+        return colors.HexColor(brand.get("color") or "#115e59")
+    except Exception:
+        return TEAL
+
+
 def _header(s, brand: dict, right_html: str) -> Table:
     left = []
     logo = _logo(brand.get("logo"))
@@ -70,11 +78,11 @@ def _header(s, brand: dict, right_html: str) -> Table:
     if brand.get("lines"):
         left.append(Paragraph("<br/>".join(escape(x) for x in brand["lines"]), s["tag"]))
     return Table([[left, [Paragraph(right_html, s["right"])]]], colWidths=[110 * mm, 64 * mm],
-                 style=[("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, 0), 1.2, TEAL),
+                 style=[("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, 0), 1.2, s["color"]),
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 8), ("LEFTPADDING", (0, 0), (0, 0), 0)])
 
 
-def _kv_table(rows: list[list[str]], highlight_last: bool = True) -> Table:
+def _kv_table(rows: list[list[str]], color=TEAL, highlight_last: bool = True) -> Table:
     t = Table(rows, colWidths=[110 * mm, 64 * mm])
     style = [
         ("FONTSIZE", (0, 0), (-1, -1), 10), ("ALIGN", (1, 0), (1, -1), "RIGHT"),
@@ -83,7 +91,7 @@ def _kv_table(rows: list[list[str]], highlight_last: bool = True) -> Table:
         ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
     ]
     if highlight_last:
-        style += [("BACKGROUND", (0, -1), (-1, -1), TEAL), ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
+        style += [("BACKGROUND", (0, -1), (-1, -1), color), ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
                   ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"), ("FONTSIZE", (0, -1), (-1, -1), 11)]
     t.setStyle(TableStyle(style))
     return t
@@ -97,11 +105,11 @@ def _doc(buf: BytesIO, title: str) -> SimpleDocTemplate:
 def build_quote_pdf(
     *, brand: dict, pkg: dict, destination: Optional[dict],
     unit_retail: Decimal, pax: int, customer_name: Optional[str], travel_date: Optional[str],
-    quote_no: str,
+    quote_no: str, issued_at: Optional[datetime] = None,
 ) -> bytes:
-    s = _styles()
+    s = _styles(_brand_color(brand))
     buf = BytesIO()
-    now = datetime.now(timezone.utc)
+    now = issued_at or datetime.now(timezone.utc)
     total = (unit_retail * pax).quantize(Decimal("0.01"))
     story = [_header(s, brand,
                      f"<b>TRAVEL QUOTE</b><br/>No. {escape(quote_no)}<br/>Date: {now:%d %b %Y}<br/>"
@@ -124,7 +132,7 @@ def build_quote_pdf(
         ["Number of travellers", f"{pax} pax"],
         ["Price per person", peso(unit_retail)],
         ["Total package price", peso(total)],
-    ]))
+    ], s["color"]))
 
     sort = lambda xs: [x.get("text") for x in sorted(xs or [], key=lambda x: x.get("sort_order", 0))]
     for title, items in (("Inclusions", sort(pkg.get("inclusions"))), ("Exclusions", sort(pkg.get("exclusions")))):
@@ -145,7 +153,7 @@ def build_receipt_pdf(
     *, brand: dict, receipt_no: str, booking: dict, pkg_title: str, customer_name: str,
     payment: dict, history: list[dict], total_due: Decimal, paid_to_date: Decimal,
 ) -> bytes:
-    s = _styles()
+    s = _styles(_brand_color(brand))
     buf = BytesIO()
     balance = max(total_due - paid_to_date, Decimal("0.00"))
     paid_on = datetime.fromisoformat(payment["paid_on"]).strftime("%d %b %Y")
@@ -169,7 +177,7 @@ def build_receipt_pdf(
     if payment.get("reference"):
         rows.append(["Reference", payment["reference"]])
     rows.append(["Amount received", peso(payment["amount"])])
-    story.append(_kv_table(rows))
+    story.append(_kv_table(rows, s["color"]))
 
     story.append(_p("Payment history", s["h"]))
     hist = [["Date", "Method", "Amount"]] + [
@@ -189,7 +197,7 @@ def build_receipt_pdf(
         ["Total package price", peso(total_due)],
         ["Total paid to date", peso(paid_to_date)],
         ["Balance due" if balance > 0 else "Fully paid", peso(balance)],
-    ]))
+    ], s["color"]))
     story += [Spacer(1, 14), _p("Thank you for your payment. Please keep this receipt for your records.", s["small"])]
     _doc(buf, f"Receipt {receipt_no}").build(story)
     return buf.getvalue()

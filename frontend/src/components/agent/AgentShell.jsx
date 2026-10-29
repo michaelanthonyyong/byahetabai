@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PrivacyToggle } from "@/components/agent/PrivacyToggle";
@@ -94,8 +95,21 @@ const MobileHeader = ({ logout }) => {
 
 export default function AgentShell({ title, subtitle, actions, children }) {
   const { user, logout } = useAuth();
+  const { data: profile } = useAgentProfile();
+  const brand = profile?.brand_color;
+  useEffect(() => {
+    if (!brand) {
+      return undefined;
+    }
+    document.body.classList.add("agent-theme");
+    document.body.style.setProperty("--brand", brand);
+    return () => {
+      document.body.classList.remove("agent-theme");
+      document.body.style.removeProperty("--brand");
+    };
+  }, [brand]);
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900">
+    <div className="min-h-screen bg-stone-50 text-stone-900" data-testid="agent-shell">
       <div className="flex min-h-screen">
         <Sidebar user={user} logout={logout} />
         <div className="flex-1 min-w-0 flex flex-col">

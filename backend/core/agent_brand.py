@@ -20,4 +20,4 @@ async def agent_brand(profile: dict, email: str | None) -> dict:
         except Exception:
             logger.exception("Could not load logo for agent %s", profile["_id"])
     lines = [x for x in [profile.get("address"), " · ".join(y for y in [profile.get("phone"), email] if y)] if x]
-    return {"name": brand_name(profile), "logo": logo, "lines": lines}
+    return {"name": brand_name(profile), "logo": logo, "lines": lines, "color": profile.get("brand_color")}

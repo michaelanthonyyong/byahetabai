@@ -59,6 +59,7 @@ class ProfileIn(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=40)
     address: Optional[str] = Field(default=None, max_length=300)
     business_name: Optional[str] = Field(default=None, max_length=120)
+    brand_color: Optional[str] = Field(default=None, pattern=r"^(#[0-9a-fA-F]{6})?$")
 
 
 # --- helpers -------------------------------------------------------------
@@ -513,6 +514,7 @@ def _profile_out(ctx: dict) -> dict:
         "phone": p.get("phone"),
         "address": p.get("address"),
         "business_name": p.get("business_name"),
+        "brand_color": p.get("brand_color"),
         "brand_name": brand_name(p),
         "has_logo": bool(p.get("logo_path")),
         "logo_updated_at": p.get("logo_updated_at"),

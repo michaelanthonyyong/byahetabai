@@ -140,6 +140,10 @@ INDEXES: dict[str, list[tuple[list, dict[str, Any]]]] = {
         ([("booking_id", ASCENDING), ("paid_on", ASCENDING)], {"name": "booking_paid_on"}),
         ([("agent_id", ASCENDING)], {"name": "agent"}),
     ],
+    Collections.SHARE_LINKS: [
+        ([("token", ASCENDING)], {"unique": True, "name": "uniq_token"}),
+        ([("agent_id", ASCENDING), ("created_at", DESCENDING)], {"name": "agent_recent"}),
+    ],
     "login_attempts": [
         ([("updated_at", ASCENDING)], {"name": "updated_at"}),
     ],

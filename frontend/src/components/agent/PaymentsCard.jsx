@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Loader2, FileDown } from "lucide-react";
+import { Plus, Trash2, Loader2, FileDown, Link2 } from "lucide-react";
+import { ShareLinkDialog } from "@/components/agent/ShareLinkDialog";
 import { downloadQuote } from "@/lib/quote";
 import { toast } from "sonner";
 
@@ -89,6 +90,7 @@ const Totals = ({ d }) => (
 export const PaymentsCard = ({ bookingId, cancelled }) => {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
+  const [shareBody, setShareBody] = useState(null);
   const { data } = useQuery({
     queryKey: ["agent-payments", bookingId],
     queryFn: () => api.get(`/agent/bookings/${bookingId}/payments`).then((r) => r.data),
@@ -128,6 +130,7 @@ export const PaymentsCard = ({ bookingId, cancelled }) => {
               </div>
               <div className="flex shrink-0">
                 <Button variant="ghost" size="sm" onClick={() => receipt(p)} title="Download receipt" data-testid={`payment-receipt-${p.id}`}><FileDown size={14} className="mr-1" />Receipt</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShareBody({ kind: "receipt", booking_id: bookingId, payment_id: p.id })} title="Share receipt link" data-testid={`payment-share-${p.id}`}><Link2 size={14} className="mr-1" />Link</Button>
                 <Button variant="ghost" size="sm" onClick={() => remove(p)} data-testid={`payment-delete-${p.id}`}><Trash2 size={14} /></Button>
               </div>
             </li>
@@ -135,6 +138,7 @@ export const PaymentsCard = ({ bookingId, cancelled }) => {
         </ul>
       )}
       {adding ? <AddPaymentDialog bookingId={bookingId} balanceDue={data.balance_due} onClose={() => setAdding(false)} /> : null}
+      {shareBody ? <ShareLinkDialog body={shareBody} onClose={() => setShareBody(null)} /> : null}
     </CardContent></Card>
   );
 };

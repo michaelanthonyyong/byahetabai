@@ -39,6 +39,8 @@ export function humanAction(a) {
     "booking.payment.delete": "Agent removed customer payment",
     "agent.logo.upload": "Agent uploaded business logo",
     "agent.logo.remove": "Agent removed business logo",
+    "share_link.create": "Agent created share link",
+    "share_link.revoke": "Agent switched off share link",
     "booking.create": "Created booking",
     "booking.confirm": "Confirmed booking",
     "settings.update": "Updated system setting",

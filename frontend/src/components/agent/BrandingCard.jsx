@@ -68,6 +68,55 @@ const LogoPicker = ({ profile }) => {
   );
 };
 
+const DEFAULT_COLOR = "#115e59";
+const luminance = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+const ColorPicker = ({ profile }) => {
+  const qc = useQueryClient();
+  const [color, setColor] = useState(DEFAULT_COLOR);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setColor(profile.brand_color || DEFAULT_COLOR); }, [profile.brand_color]);
+  const valid = /^#[0-9a-fA-F]{6}$/.test(color);
+  const tooLight = valid && luminance(color) > 0.6;
+
+  const save = async (value) => {
+    setBusy(true);
+    try {
+      const { data } = await api.patch("/agent/profile", { brand_color: value });
+      qc.setQueryData(["agent-profile"], data.profile);
+      toast.success(value ? "Brand colour saved." : "Brand colour reset.");
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 sm:col-span-2 border-t border-stone-100 pt-5">
+      <Label htmlFor="p-color">Brand colour</Label>
+      <div className="flex flex-wrap items-center gap-3">
+        <input id="p-color" type="color" value={valid ? color : DEFAULT_COLOR} onChange={(e) => setColor(e.target.value)}
+          className="h-10 w-14 cursor-pointer rounded-md border border-stone-300 bg-white p-1" data-testid="profile-brand-color-picker" />
+        <Input value={color} maxLength={7} onChange={(e) => setColor(e.target.value.trim())} className="w-32 font-mono" data-testid="profile-brand-color-input" />
+        <div className="flex items-center gap-2 rounded-lg border border-stone-200 px-3 py-2" data-testid="profile-brand-color-preview">
+          <span className="h-4 w-4 rounded" style={{ background: valid ? color : DEFAULT_COLOR }} />
+          <span className="text-sm font-semibold" style={{ color: valid ? color : DEFAULT_COLOR }}>{profile.brand_name}</span>
+        </div>
+        <Button onClick={() => save(color)} disabled={!valid || busy} className="bg-teal-800 hover:bg-teal-900" data-testid="profile-brand-color-save">Save colour</Button>
+        {profile.brand_color ? <Button variant="ghost" onClick={() => save("")} disabled={busy} data-testid="profile-brand-color-reset">Reset</Button> : null}
+      </div>
+      {!valid ? <p className="text-xs text-red-600" data-testid="profile-brand-color-error">Use a colour code like #1E40AF.</p> : null}
+      {tooLight ? <p className="text-xs text-amber-700" data-testid="profile-brand-color-warning">This colour is very light — white text and headings may be hard to read on quotes and receipts.</p> : null}
+      <p className="text-xs text-stone-500">Used on your quotes, receipts and portal buttons.</p>
+    </div>
+  );
+};
+
 export const BrandingCard = ({ profile }) => {
   const qc = useQueryClient();
   const [name, setName] = useState("");
@@ -103,6 +152,7 @@ export const BrandingCard = ({ profile }) => {
             {busy ? <Loader2 className="animate-spin mr-1" size={14} /> : null}Save name
           </Button>
         </div>
+        <ColorPicker profile={profile} />
       </CardContent>
     </Card>
   );

@@ -57,6 +57,7 @@ class AgentProfile(BaseDocument):
 
     # Agent-controlled branding for customer documents and the portal.
     business_name: Optional[str] = None
+    brand_color: Optional[str] = Field(default=None, description="#RRGGBB used on documents and portal")
     logo_path: Optional[str] = None
     logo_content_type: Optional[str] = None
     logo_updated_at: Optional[str] = None
