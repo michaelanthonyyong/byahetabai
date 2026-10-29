@@ -1,0 +1,47 @@
+{
+  "summary": "Phase 7 (booking status alerts + customer payment tracking) tested end-to-end. Backend: new pytest file test_agent_phase7_alerts_payments.py, 25/25 passing. Covered: admin confirm/complete/cancel(with refund '₱7,000.00 was refunded' + reason, without refund 'No refund was issued') each creating exactly one agent notification with correct kind/ref; invalid transition creates no alert; fund request approve/reject -> fund_request.approved/rejected with amount/reason; GET notifications unread_count, mark-one-read, read-all, other agent's notification 404 and not listed, unknown id 404, RBAC admin 403/anon 401; payments list/add/delete, validation (amount 0/-5 422, bad method 422, > balance 400, > remaining 400, future date 400, bad date 400), cancelled booking 400, other agent's booking 404 on GET/POST/DELETE, status unpaid->partial->paid->partial->unpaid persisted in DB, audit booking.payment.add/delete, list has amount_paid/balance_due, ?payment=owing excludes paid & cancelled, invalid payment value 422, dashboard customer_balance_due/bookings_owing, admin detail payments/amount_paid/balance_due, admin guest-payment-status override 409. Phase5/6 regression passes; old phase4_step3 guest-payment test updated to expect 409. Frontend (desktop 1920 + mobile 390): bell with unread badge, panel lists alerts, clicking alert marks read (count 4->3) and navigates to booking detail; dashboard alert click (top-up rejected) navigates to /agent/top-ups; Mark all read clears badge and dots; dashboard Alerts card and 'Customers still owe' link -> Balance due tab active with only owing rows; payments card: dialog amount error + disabled save for > balance, method select (GCash), reference/note, save updates Paid/Balance due, Record button hidden when fully paid and on cancelled booking, delete (confirm) recomputes totals and status 'Partial'; bookings list Balance due column ('—' for cancelled); admin detail Guest payment card shows 'Due ₱2,500' and read-only Customer payments dialog (no inputs). Mobile: no horizontal overflow on dashboard/detail, mobile bell + panel + dialog fine. All data cleaned; agent balance 53604.00 == SUM(ledger).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/agent/bookings/{id}/payments", "issue": "Overpay guard is check-then-insert (payments_total read, then insert). Two concurrent requests can together exceed the balance due. Low risk for single agent UI; could guard with a per-booking lock/atomic counter."},
+      {"endpoint": "core/booking_service.change_status / financial_service approve/reject", "issue": "notify_agent runs after the state change without try/except; a notification insert failure would return 500 even though the status/ledger change already committed. Wrap in try/except + log."},
+      {"endpoint": "Legacy data (admin GET /api/admin/bookings/{id}, dashboard)", "issue": "Bookings whose guest_payment_status was set to 'paid' manually before Phase 7 (e.g. BTB-DEMO-0001) have no payment rows: they show status 'paid' but balance_due = full total, and are excluded from owing filter/dashboard. Consider a one-off migration (sync_payment_status for all) or treat legacy 'paid' consistently."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin booking detail > Customer payments dialog", "issues": ["Shows raw method key ('cash', 'bank_transfer') and ISO date (2026-10-29); agent side uses 'Cash' / 'Oct 29, 2026' — reuse METHODS labels + fmtDate. Reference/note not shown in admin list rows (reference is returned by API)"]},
+      {"screen": "Payment dialog", "issues": ["'Paid on' uses native <input type=date> rather than shadcn Calendar/Popover"]},
+      {"screen": "Agent booking detail", "issues": ["Sonner toast ('Payment removed.') overlaps header action buttons for a few seconds (known from iteration 9)"]},
+      {"screen": "Agent dashboard (mobile)", "issues": ["Alerts card sits far down the page below balance/stat cards; acceptable since bell is in top bar"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_agent_phase7_alerts_payments.py", "/app/backend/tests/ui_setup_phase7.py", "/app/test_reports/pytest/pytest_phase7.xml"],
+  "action_items": [
+    "Optional: wrap notify_agent calls in try/except so alert failures never break status/fund decisions",
+    "Optional: make payment overpay guard atomic",
+    "Optional: migrate legacy manually-set guest_payment_status so it matches payments",
+    "Optional: humanize method/date in admin Customer payments dialog and show reference"
+  ],
+  "critical_code_review_comments": [
+    "payment_service.sync_payment_status + agent_bookings.add_payment: non-atomic check of remaining balance before insert",
+    "notify_agent not isolated from main operation errors",
+    "test_admin_bookings_phase4_step3.py: 2 pre-existing failures (test_summary_shape, test_cancel_with_refund) because seed BTB-DEMO-0001 was already cancelled by an earlier destructive run — stale data dependency, not a Phase 7 regression",
+    "test_agent_phase6_bookings.py cleanup previously left behind notifications produced by its confirm/cancel calls (now fixed)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_agent_phase7_alerts_payments.py (new)",
+    "/app/backend/tests/ui_setup_phase7.py (new, UI test setup/cleanup helper)",
+    "/app/backend/tests/test_admin_bookings_phase4_step3.py (guest-payment-status test now expects 409)",
+    "/app/backend/tests/test_agent_phase6_bookings.py (cleanup also deletes notifications/payments of its bookings)"
+  ],
+  "success_rate": {"backend": "100% (25/25 phase7; phase5/6 regression pass; 2 stale-data failures in phase4_step3 unrelated)", "frontend": "100% of requested flows pass; minor design notes only"},
+  "test_credentials": "Admin yongmichael992@gmail.com / Admin@12345; Agent agent.demo@biyahetabai.example.com / Agent@12345",
+  "seed_data_creation": "None persisted. All TEST_P7 / TEST_P7UI customers, bookings, transactions, commissions, payments, fund requests and notifications deleted; 2 pre-existing notifications kept with original unread state; agent balance restored to 53604.00 (== ledger sum). Pre-existing BTB-261029-153A with 3000 GCash payment untouched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n0 and export REACT_APP_BACKEND_URL. For UI tests, `python /app/backend/tests/ui_setup_phase7.py setup` creates a confirmed + cancelled booking (with alerts) and `... cleanup` reverts. Note: the preview host contains 'agent', so wait_for_url('**/agent**') matches /login — wait for a selector like notification-bell instead. Server clock is Oct 2026.",
+  "rca of the issue": "No functional bugs found."
+}

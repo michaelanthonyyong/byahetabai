@@ -79,6 +79,8 @@ def cleanup(db, agent_id):
     new_b = [b["_id"] for b in db.bookings.find({"_id": {"$nin": list(existing_bookings)}}, {"_id": 1})]
     db.financial_transactions.delete_many({"ref_type": "booking", "ref_id": {"$in": new_b}})
     db.commissions.delete_many({"booking_id": {"$in": new_b}})
+    db.notifications.delete_many({"ref_type": "booking", "ref_id": {"$in": new_b}})  # phase 7 alerts
+    db.booking_payments.delete_many({"booking_id": {"$in": new_b}})
     db.bookings.delete_many({"_id": {"$in": new_b}})
     db.customers.delete_many({"first_name": {"$regex": f"^{PFX}"}})
     db.agent_package_markups.delete_many({"_id": {"$nin": list(existing_markups)}})

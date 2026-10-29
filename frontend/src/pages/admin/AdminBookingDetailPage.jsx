@@ -113,6 +113,8 @@ function ChangeStatusDialog({ booking, target, onDone }) {
   );
 }
 
+const METHOD_LABELS = { cash: "Cash", gcash: "GCash", bank_transfer: "Bank transfer", card: "Card", other: "Other" };
+
 function GpsDialog({ booking }) {
   const payments = booking.payments || [];
   return (
@@ -130,7 +132,7 @@ function GpsDialog({ booking }) {
         {payments.length === 0 ? <p className="text-sm text-stone-500">No payments recorded.</p> : (
           <ul className="divide-y divide-stone-100 text-sm" data-testid="admin-booking-payments">
             {payments.map((p) => (
-              <li key={p.id} className="py-2 flex justify-between"><span>{p.paid_on} · {p.method.replace("_", " ")}{p.reference ? ` · ${p.reference}` : ""}</span><span className="font-mono">{formatPHP(p.amount)}</span></li>
+              <li key={p.id} className="py-2 flex justify-between gap-3"><span>{new Date(`${p.paid_on}T00:00:00`).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })} · {METHOD_LABELS[p.method] || p.method}{p.reference ? ` · Ref ${p.reference}` : ""}</span><span className="font-mono">{formatPHP(p.amount)}</span></li>
             ))}
           </ul>
         )}

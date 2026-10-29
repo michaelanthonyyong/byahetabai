@@ -82,6 +82,19 @@ biyahetabaitravel.com.
   - Frontend: Customers, Bookings (tabs), New booking, Booking detail,
     Book/Quote buttons on package detail; Customer view respected.
   - Tests: `tests/test_agent_phase6_bookings.py` (25/25).
+- **2026-10-29 Phase 7** — Booking status alerts + customer payment tracking:
+  - `notify_agent` (in-portal `notifications`, failure-safe) on admin booking
+    confirm/complete/cancel (refund amount in text) and top-up approve/reject.
+  - `/api/agent/notifications` list + unread_count, mark one / all read.
+  - `booking_payments` collection; agent add/delete payments (no overpay,
+    not on cancelled, no future date). `guest_payment_status` derived
+    automatically; admin manual override now 409; admin sees payments.
+  - Bookings list `balance_due` + `?payment=owing`; dashboard
+    `customer_balance_due` / `bookings_owing`.
+  - Frontend: bell with unread badge (desktop + mobile), dashboard Alerts
+    card + "Customers still owe" card, PaymentsCard on booking detail,
+    Balance due tab/column, admin read-only Customer payments dialog.
+  - Tests: `tests/test_agent_phase7_alerts_payments.py` (25/25).
 
 ## Backlog
 ### Next candidates
@@ -93,6 +106,8 @@ biyahetabaitravel.com.
 ### P2 — Phase 8: Hardening
 - Rate limits on `/api/public/contact` and invite endpoints.
 - Make the agent "max 5 pending top-ups" check atomic (currently count-then-insert).
+- Make the customer-payment overpay guard atomic (two simultaneous saves could exceed the total).
+- Legacy BTB-DEMO-0001 still shows "paid" with no payment rows (set manually pre-Phase 7).
 - Brute-force lockout on `/api/auth/login`.
 - Periodic financial reconciliation (`balance == SUM(txn)` per account).
 - Note: phase4 step3 admin booking tests assume BTB-DEMO-0001 is confirmed; it is

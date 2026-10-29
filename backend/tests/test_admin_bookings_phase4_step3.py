@@ -148,21 +148,15 @@ class TestInvalidTransitions:
 # ---- Guest payment status (informational only) ----
 
 class TestGuestPaymentStatus:
-    def test_toggle_partial_no_ledger_row(self, admin, demo_booking):
+    def test_manual_override_now_409(self, admin, demo_booking):
+        # Phase 7: guest payment status follows agent-recorded payments; admin override disabled.
         bid = demo_booking["id"]
-        # baseline txn count
-        before = len(admin.get(f"{API}/admin/bookings/{bid}/transactions", timeout=15).json()["transactions"])
+        before = admin.get(f"{API}/admin/bookings/{bid}", timeout=15).json()["booking"]["guest_payment_status"]
         r = admin.patch(f"{API}/admin/bookings/{bid}/guest-payment-status",
                         json={"status": "partial", "note": "Testing partial"}, timeout=15)
-        assert r.status_code == 200
+        assert r.status_code == 409
         d = admin.get(f"{API}/admin/bookings/{bid}", timeout=15).json()["booking"]
-        assert d["guest_payment_status"] == "partial"
-        after = len(admin.get(f"{API}/admin/bookings/{bid}/transactions", timeout=15).json()["transactions"])
-        assert after == before, "guest-payment-status must NOT create a ledger row"
-        # restore to paid so UI test still sees 'paid' visually — cancel is next
-        r2 = admin.patch(f"{API}/admin/bookings/{bid}/guest-payment-status",
-                         json={"status": "paid"}, timeout=15)
-        assert r2.status_code == 200
+        assert d["guest_payment_status"] == before
 
 
 # ---- Destructive: Cancel-with-refund + commission reversal ----
