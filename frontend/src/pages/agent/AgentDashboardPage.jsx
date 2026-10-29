@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Compass, Wallet, BookText, AlertTriangle, ArrowRight } from "lucide-react";
 import { LedgerStatus } from "@/pages/agent/AgentLedgerPage";
+import { usePrivacy } from "@/contexts/PrivacyContext";
 
 const Stat = ({ label, value, hint, testid, masked }) => (
   <Card className="border-stone-200">
@@ -27,7 +28,7 @@ const QuickLink = ({ to, icon: Icon, title, text, testid }) => (
     className="group flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-teal-700"
   >
     <div className="rounded-lg bg-teal-50 p-2 text-teal-800"><Icon size={18} /></div>
-    <div className="flex-1">
+    <div className="flex-1 min-w-0">
       <div className="font-medium text-stone-900">{title}</div>
       <div className="text-xs text-stone-500 mt-0.5">{text}</div>
     </div>
@@ -61,6 +62,7 @@ const RecentLedger = ({ rows }) => (
 );
 
 export default function AgentDashboardPage() {
+  const { hidden } = usePrivacy();
   const { data, isLoading } = useQuery({
     queryKey: ["agent-dashboard"],
     queryFn: () => api.get("/agent/dashboard").then((r) => r.data),
@@ -68,7 +70,7 @@ export default function AgentDashboardPage() {
 
   return (
     <AgentShell subtitle="Overview" title={data ? `Welcome back, ${data.agent.display_name}` : "Dashboard"}>
-      <div className="space-y-8 max-w-6xl" data-testid="agent-dashboard">
+      <div className="space-y-8 max-w-6xl min-w-0" data-testid="agent-dashboard">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50/60 p-4">
           <div className="text-sm text-teal-900">
             <b>Customer view</b> hides your net cost, markup and earnings so a customer can look at your screen safely.
@@ -80,7 +82,7 @@ export default function AgentDashboardPage() {
           <div className="h-40 rounded-xl bg-stone-100 animate-pulse" />
         ) : (
           <>
-            {data.packages_needing_markup > 0 ? (
+            {data.packages_needing_markup > 0 && !hidden ? (
               <Alert className="border-amber-300 bg-amber-50" data-testid="dashboard-markup-alert">
                 <AlertTriangle className="h-4 w-4 text-amber-700" />
                 <AlertDescription className="text-amber-900 text-sm">
@@ -97,10 +99,10 @@ export default function AgentDashboardPage() {
               <Stat label="Pending top-ups" value={data.pending_fund_requests} testid="dashboard-pending-topups" hint="Awaiting admin approval" />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-5">
-              <div className="lg:col-span-3"><RecentLedger rows={data.recent_ledger} /></div>
-              <div className="lg:col-span-2 space-y-3">
-                <QuickLink to="/agent/catalog" icon={Compass} title="Package catalog" text={`Set your markup (₱${data.markup_bounds.min}–₱${data.markup_bounds.max} per pax)`} testid="quick-link-catalog" />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+              <div className="lg:col-span-3 min-w-0"><RecentLedger rows={data.recent_ledger} /></div>
+              <div className="lg:col-span-2 space-y-3 min-w-0">
+                <QuickLink to="/agent/catalog" icon={Compass} title="Package catalog" text={hidden ? "Browse packages and prices" : `Set your markup (${formatPHP(data.markup_bounds.min)} – ${formatPHP(data.markup_bounds.max)} per pax)`} testid="quick-link-catalog" />
                 <QuickLink to="/agent/top-ups" icon={Wallet} title="Request a top-up" text="Add funds to your booking balance" testid="quick-link-topups" />
                 <QuickLink to="/agent/ledger" icon={BookText} title="Earnings ledger" text="Every booking, cost and profit" testid="quick-link-ledger" />
               </div>

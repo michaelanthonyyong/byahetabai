@@ -30,7 +30,7 @@ export const RetailOnly = ({ pkg }) => (
   <div className="flex items-end justify-between">
     <span className="text-xs uppercase tracking-widest text-stone-500">Price per person</span>
     <span className="font-display text-2xl text-stone-900" data-testid={`pkg-retail-only-${pkg.id}`}>
-      {pkg.bookable ? formatPHP(pkg.retail_price) : <span className="text-sm text-stone-400">Not available</span>}
+      {pkg.bookable ? formatPHP(pkg.retail_price) : <span className="font-sans text-sm font-medium text-stone-600">Not available</span>}
     </span>
   </div>
 );

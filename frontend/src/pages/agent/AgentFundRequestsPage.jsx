@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import AgentShell from "@/components/agent/AgentShell";
 import { TopUpDialog } from "@/components/agent/TopUpDialog";
+import { Masked } from "@/components/agent/PrivacyToggle";
 import { api } from "@/lib/api";
 import { formatPHP } from "@/lib/money";
 import { timeAgo } from "@/lib/admin";
@@ -17,7 +18,7 @@ const TONES = {
 
 const RequestRow = ({ r }) => (
   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 px-5 py-4 border-b border-stone-100 last:border-0 text-sm" data-testid={`topup-row-${r.id}`}>
-    <div className="font-medium" data-testid={`topup-amount-${r.id}`}>{formatPHP(r.amount)}</div>
+    <div className="font-medium" ><Masked testid={`topup-amount-${r.id}`}>{formatPHP(r.amount)}</Masked></div>
     <div className="sm:order-last text-right sm:text-left">
       <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize ${TONES[r.status]}`} data-testid={`topup-status-${r.id}`}>{r.status}</span>
     </div>

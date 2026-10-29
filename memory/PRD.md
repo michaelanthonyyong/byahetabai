@@ -52,27 +52,36 @@ biyahetabaitravel.com.
   - Frontend: `AdminTransactionsPage`, `AdminContactsPage`,
     `AdminSettingsPage`, `AdminAuditLogsPage`. Sidebar has no SOON items.
   - Tests: `tests/test_admin_phase4_step5.py` (46/46 passing).
+- **2026-10-29 Phase 5** — Agent Portal (markup model; withdrawals CANCELLED by user):
+  - Settings `minimum_markup_amount` / `maximum_markup_amount` (fixed PHP per
+    pax, defaults 0 / 10,000, min ≤ max enforced, shown in Admin Settings).
+  - `agent_package_markups` collection (unique agent_id+package_id).
+    Markup status: unset / ok / out_of_range → `bookable` only when ok
+    (no markup = can't sell; admin narrowing range flags & blocks).
+  - Package `commission_amount` kept as extra bonus on top of markup.
+  - `/api/agent/*`: dashboard, packages (+detail, PUT markup), fund-requests
+    (bounds, max 5 pending, feeds admin queue), ledger (Date | Booking ID |
+    Description | Net Cost | Customer Paid | Earned | Status), transactions,
+    profile (phone/address). All audit-logged, agent resolved from JWT.
+  - Frontend: AgentShell, Dashboard, Catalog + markup dialog, package
+    detail, Top-ups, Ledger (Earnings / Wallet tabs), Profile (+password).
+  - "Customer view" privacy toggle (localStorage) masks net cost, markup,
+    earnings, balances and top-up amounts; shows retail only.
+  - Tests: `tests/test_agent_phase5_portal.py` (24/24).
 
 ## Backlog
-### P0 — Phase 5: Agent Portal (Read-only + Fund Requests)
-- Agent portal shell + role-based routing.
-- Agent dashboard: balances, recent bookings.
-- Catalog view showing agent_cost + commission (no guest-price emphasis).
-- Agent profile page.
-- Agent-side `POST /api/agent/fund-requests` submission form (feeds the
-  existing admin queue built in Step 4).
-
 ### P0 — Phase 6: Agent Customers & Bookings
 - Agent CRUD for own customers (strict `agent_id` from JWT).
-- Booking creation → atomic `BOOKING_DEBIT`.
+- Booking creation → atomic `BOOKING_DEBIT` of net cost; only when markup
+  is `ok`; snapshot `unit_markup_amount`, `total_markup_amount`,
+  `total_retail_price` on the booking (ledger already reads them).
+- Checkout screens must respect the Customer view toggle.
 
-### P1 — Phase 7: Commissions & Withdrawals
-- Commission accrual visibility.
-- Withdrawal request submission (gated by `commission_withdrawals_enabled`).
-- Admin Withdrawal queue (mirror of Fund Requests, commission-account debits).
+### CANCELLED — Phase 7 Commission Withdrawals (agents collect markup upfront)
 
 ### P2 — Phase 8: Hardening
 - Rate limits on `/api/public/contact` and invite endpoints.
+- Make the agent "max 5 pending top-ups" check atomic (currently count-then-insert).
 - Brute-force lockout on `/api/auth/login`.
 - Periodic financial reconciliation (`balance == SUM(txn)` per account).
 - Consider Mongo transactions when a replica set is available.

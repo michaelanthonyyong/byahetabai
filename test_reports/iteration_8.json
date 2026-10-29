@@ -1,0 +1,49 @@
+{
+  "summary": "Phase 5 Agent Portal tested end-to-end. Backend: all 24 new pytest cases pass (RBAC 401/403, dashboard, published-only catalog, search, draft 404, markup set/update/persist with retail = net + markup, audit log agent.markup.set, 400 outside bounds / 422 negative, admin narrows max to 1000 so existing 2000 markup becomes out_of_range/bookable=false and then fixed at 800, cross-key min<=max rule, fund requests bounds 400/422, admin queue visibility, 409 at 5 pending, ledger totals exclude cancelled with earned=0, transactions, profile PATCH only changes phone/address and enforces max length). Frontend: agent login goes to /agent; dashboard stats, markup alert and quick links work; catalog Set markup dialog shows the inline range error, disables Save and shows the live customer price preview (3500+1234=4734); the save updates the card; All/Ready/Needs markup filters, search with empty state, and the detail page all work; Customer view toggle (header, dashboard and mobile) masks values with •••• and hides markup buttons, the toggles stay in sync and the setting survives a reload (localStorage). Top-up dialog validation and submit work, Ledger Earnings/Wallet tabs and the 7 spec columns are correct, profile save persists, the password-mismatch check and wrong-current-password error toast work (demo password NOT changed). Admin Settings markup cards render and the cross-key error toast shows. Mobile 390px is mostly fine. Cleanup done: TEST_P5 fund requests and markups deleted, markup settings are 0.00/10000.00, demo phone restored, pending fund requests back to 1.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/agent/fund-requests", "issue": "The pending-count check and the insert are separate steps (race), so two requests sent at the same moment could create a 6th pending request. Low risk."},
+      {"endpoint": "PUT /api/agent/packages/{id}/markup", "issue": "The audit 'before' payload leaves out package_id (only 'after' has it). Small inconsistency for audit consumers."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AgentProfilePage read-only header card (desktop)", "issue": "Long email 'agent.demo@biyahetabai.example.com' overflows into the 'Member since' column and the text overlaps. Add break-all/truncate or min-w-0, or change the grid split.", "selector": "[data-testid='profile-email']", "priority": "MEDIUM"},
+      {"component": "AgentDashboardPage at 390px", "issue": "The page scrolls sideways a little (document scrollWidth 404 > 390). Other agent pages are 390.", "selector": "[data-testid='agent-dashboard']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Customer view (privacy) mode", "issues": [
+        "Dashboard quick link still says 'Set your markup (₱0.00–₱10000.00 per pax)' and the amber markup alert ('4 of 5 packages can't be sold yet — set or fix your markup') still shows. This tells customers about markups. Hide both, or reword them, when hidden=true.",
+        "Top-ups page amounts are not masked in Customer view. Consider masking them because they reveal funding/balance info."
+      ]},
+      {"screen": "Catalog cards in Customer view", "issues": ["'Not available' is text-stone-400 in the display font at text-sm. Contrast is low and it is hard to read."]},
+      {"screen": "Dashboard quick link", "issues": ["Bounds are shown raw (₱0.00–₱10000.00) while the rest of the app uses formatPHP (₱0 – ₱10,000). Inconsistent."]},
+      {"screen": "Mobile ledger", "issues": ["The ledger table scrolls sideways inside its card with no visual hint. Net cost/Customer paid/Earned are off-screen at 390px. Consider a stacked card layout like the Top-ups page."]},
+      {"screen": "Catalog", "issues": ["The '4D3N Cebu Free & Easy' cover image looks like the Ho Chi Minh City skyline (Bitexco tower), not Cebu."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_agent_phase5_portal.py", "/app/test_reports/pytest/phase5_agent.xml"],
+  "action_items": [
+    "Fix profile header email overflow/overlap with the Member since column",
+    "Fix the 14px sideways scroll on the mobile agent dashboard",
+    "In Customer view, hide the markup alert and the quick-link markup-bounds text (and consider masking top-up amounts)",
+    "Improve contrast of the 'Not available' label in Customer view retail display",
+    "Optional: format quick-link bounds with formatPHP; use a mobile-friendly ledger layout; replace the Cebu cover image"
+  ],
+  "critical_code_review_comments": [
+    "agent.py: isolation via current_agent from the JWT is solid; no agent_id is taken from the client.",
+    "agent.py create_fund_request: the max-5-pending check is not atomic (count then insert).",
+    "agent.py list_packages imports re inside the function; move it to module level.",
+    "MarkupDialog: front-end validation uses parseFloat and the backend re-validates with Decimal, so this is fine. The `pkg?.markup_amount ?` check treats '0.00' as truthy (string), so 0 markups display correctly.",
+    "PrivacyContext: localStorage key btb-agent-privacy-mode persists correctly; the provider is created per route, which is fine because state is read from localStorage on mount."
+  ],
+  "updated_files": ["/app/backend/tests/test_agent_phase5_portal.py"],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "95% (all flows functional; 2 minor UI bugs, privacy-mode leaks)"},
+  "test_credentials": "Admin yongmichael992@gmail.com / Admin@12345; Agent agent.demo@biyahetabai.example.com / Agent@12345 (from /app/memory/test_credentials.md; bcrypt $2b$ verified)",
+  "seed_data_creation": "None persisted. TEST_P5* fund requests and all markups created during tests were deleted; markup settings restored to 0.00/10000.00.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Phase 5 agent portal verified. Run pytest with -n0 (xdist is enabled by default; the module fixture cleanup restores settings). Demo agent: 1 pending fund request (TEST-0109d993), 1 cancelled booking BTB-DEMO-0001, 5 published packages + 1 draft (447babf3-...). There is no API to delete markups; tests clean up via pymongo."
+}

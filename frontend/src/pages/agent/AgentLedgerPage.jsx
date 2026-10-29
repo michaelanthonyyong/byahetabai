@@ -36,7 +36,7 @@ const EarningsTable = ({ data }) => (
         ) : data.rows.map((r) => (
           <TableRow key={r.id} data-testid={`ledger-row-${r.id}`} className={r.status === "cancelled" ? "text-stone-400" : ""}>
             <TableCell className="whitespace-nowrap">{fmtDate(r.date)}</TableCell>
-            <TableCell className="font-mono text-xs">{r.booking_ref}</TableCell>
+            <TableCell className="font-mono text-xs whitespace-nowrap">{r.booking_ref}</TableCell>
             <TableCell className="min-w-[200px]">{r.description}</TableCell>
             <TableCell className="text-right"><Masked>{formatPHP(r.net_cost)}</Masked></TableCell>
             <TableCell className="text-right">{formatPHP(r.customer_paid)}</TableCell>

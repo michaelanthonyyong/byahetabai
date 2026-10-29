@@ -5,6 +5,7 @@ accepts an agent id from the client.
 """
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from typing import Optional
 
@@ -218,7 +219,6 @@ async def list_packages(
     db = get_db()
     query: dict = {"status": "published"}
     if q:
-        import re
         query["title"] = {"$regex": re.escape(q), "$options": "i"}
     pkgs = await db[Collections.PACKAGES].find(query).sort("title", 1).to_list(length=None)
     dest_ids = list({p["destination_id"] for p in pkgs})
@@ -289,7 +289,7 @@ async def set_markup(
         markup_id = doc.id
     await _audit(
         ctx, "agent.markup.set", "agent_package_markup", markup_id,
-        {"markup_amount": before},
+        {"package_id": package_id, "markup_amount": before},
         {"package_id": package_id, "markup_amount": _q(amount)},
         request,
     )

@@ -10,9 +10,9 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const ReadOnly = ({ label, value, testid }) => (
-  <div>
+  <div className="min-w-0">
     <div className="text-[11px] uppercase tracking-widest text-stone-500">{label}</div>
-    <div className="text-sm text-stone-900 mt-0.5" data-testid={testid}>{value || "—"}</div>
+    <div className="text-sm text-stone-900 mt-0.5 break-all" data-testid={testid}>{value || "—"}</div>
   </div>
 );
 
