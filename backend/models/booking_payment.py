@@ -28,6 +28,7 @@ class BookingPayment(BaseDocument):
     reference: Optional[str] = None
     note: Optional[str] = None
     recorded_by_user_id: str
+    receipt_seq: Optional[int] = Field(default=None, description="Stable receipt number within the booking")
 
     @field_validator("amount", mode="before")
     @classmethod

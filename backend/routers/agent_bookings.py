@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from pymongo import ReturnDocument
 from pydantic import BaseModel, EmailStr, Field
 
 from core.agent_booking_service import create_agent_booking, parse_future_date, resolve_sellable_package
@@ -319,10 +320,14 @@ async def add_payment(booking_id: str, payload: PaymentIn, request: Request, ctx
     amount = payload.amount.quantize(Decimal("0.01"))
     if amount > remaining:
         raise HTTPException(status_code=400, detail=f"Amount is more than the balance due (₱{remaining.quantize(Decimal('0.01')):,})")
+    seq_doc = await get_db()[Collections.BOOKINGS].find_one_and_update(
+        {"_id": booking_id}, {"$inc": {"payment_seq": 1}}, return_document=ReturnDocument.AFTER, projection={"payment_seq": 1},
+    )
     p = BookingPayment(
         booking_id=booking_id, agent_id=ctx["profile"]["_id"], amount=amount, method=payload.method,
         paid_on=paid_on.isoformat(), reference=(payload.reference or "").strip() or None,
         note=(payload.note or "").strip() or None, recorded_by_user_id=ctx["user"]["_id"],
+        receipt_seq=seq_doc["payment_seq"],
     )
     await get_db()[Collections.BOOKING_PAYMENTS].insert_one(p.to_mongo())
     status = await sync_payment_status(b)
@@ -358,7 +363,7 @@ async def payment_receipt(booking_id: str, payment_id: str, ctx: dict = Depends(
     p = rows[idx]
     pkg = await db[Collections.PACKAGES].find_one({"_id": b["package_id"]}, {"title": 1})
     cust = await db[Collections.CUSTOMERS].find_one({"_id": b["customer_id"]})
-    receipt_no = f"{b['reference_code']}-R{idx + 1}"
+    receipt_no = f"{b['reference_code']}-R{p.get('receipt_seq') or idx + 1}"
     pdf = build_receipt_pdf(
         brand=await agent_brand(ctx["profile"], ctx["user"].get("email")),
         receipt_no=receipt_no, booking=b, pkg_title=(pkg or {}).get("title", "Package"),

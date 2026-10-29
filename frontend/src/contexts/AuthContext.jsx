@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { api, formatApiError } from "@/lib/api";
 
 /**
@@ -11,6 +12,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const queryClient = useQueryClient();
 
   const fetchMe = useCallback(async () => {
     try {
@@ -28,6 +30,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
+      queryClient.clear();
       setUser(data.user);
       return { ok: true, user: data.user };
     } catch (e) {
@@ -39,6 +42,7 @@ export function AuthProvider({ children }) {
     try {
       await api.post("/auth/logout");
     } finally {
+      queryClient.clear();
       setUser(false);
     }
   };

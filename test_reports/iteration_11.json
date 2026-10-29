@@ -1,0 +1,35 @@
+{
+  "summary": "Phase 8 (agent branding + logo upload, payment receipt PDFs, agent-branded quotes, trip-due reminders) tested end-to-end. Backend: new test_agent_phase8_branding_receipts.py 22/22 pass; phase5/6/7 regression 74/74 pass. Frontend desktop 1920 + mobile 390: all requested flows work. No functional bugs found; only minor code-review items.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "_ensure_due_alerts (GET /api/agent/dashboard, /api/agent/notifications)", "issue": "Check-then-insert with no unique index on notifications(ref_id, kind). A 6-request concurrent test produced no duplicates, but a race is still possible in theory. A partial unique index (or upsert) would make 'one alert per booking' guaranteed."},
+      {"endpoint": "GET /api/agent/bookings/{id}/payments/{pid}/receipt.pdf", "issue": "Receipt no. R{n} is the payment's position in the list sorted by paid_on. Deleting an earlier payment or adding a backdated one renumbers existing receipts, so a reprinted receipt can carry a different number than the one the customer holds. Consider storing a fixed sequence number on the payment."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Logout then login as a different agent in the same tab", "issue": "Not verified (no second agent's credentials). Logout does not clear the React Query cache, and agent-profile has staleTime 60s. The logo URL /api/agent/profile/logo?v=<logo_updated_at> also has Cache-Control private max-age=86400. So the next agent may briefly see the previous agent's brand name, and possibly their logo. Suggest queryClient.clear() on logout.", "affected_selectors": ["agent-brand-name", "agent-brand-logo"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_agent_phase8_branding_receipts.py", "/app/test_reports/pytest/pytest_phase8.xml"],
+  "action_items": [
+    "Optional: add a unique index on notifications {ref_id, kind} for booking.payment_due, or use upsert, so the alert can never be duplicated",
+    "Optional: clear the React Query cache on logout so cached brand and profile data never carries over between accounts",
+    "Optional: store a fixed receipt sequence on each payment so receipt numbers never change"
+  ],
+  "critical_code_review_comments": [
+    "Logo validation is solid: the size check happens before parsing, PIL verify runs, only PNG/JPEG are allowed, and GIF/text/fake-PNG/>2MB are all rejected with 400",
+    "The PDF header shows the agent's email. For the demo agent that is agent.demo@biyahetabai.example.com, so a raw text search for 'Biyahe' matches the email. That is demo data, not a branding leak; real agents' emails won't match",
+    "The demo agent's phone is '+63 900 a55fa7', probably left over from an earlier test, and it shows on the PDFs. Worth cleaning in seed data",
+    "Remove-logo is a soft unlink. Objects stay in storage, which is acceptable because there is no delete API"
+  ],
+  "updated_files": ["/app/backend/tests/test_agent_phase8_branding_receipts.py"],
+  "success_rate": {"backend": "100% (22/22 new, 74/74 regression)", "frontend": "100%"},
+  "seed_data_creation": "None left behind. Tests create TEST_P8 customers/bookings/payments/notifications and clean them up. The agent's booking balance (53604.00), business_name and logo fields were restored to E1's state: 'TEST Island Hoppers Travel' plus the original logo_path. The UI test changed the logo and name, and these were restored directly in the DB.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: export REACT_APP_BACKEND_URL=...; pytest -n0 /app/backend/tests/test_agent_phase8_branding_receipts.py. The file uses pymupdf and replaces the agent email in PDF text before the 'biyahe' check. It saves and restores profile branding fields. Server clock is Oct 2026. Pending booking BTB-261029-363A (id a8bc8b43-583a-4931-9839-34d3de5bb1ef) belongs to E1's manual data. UI: wait for the notification-bell selector after login, not a URL."
+}

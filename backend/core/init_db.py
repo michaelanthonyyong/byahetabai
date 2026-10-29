@@ -101,6 +101,13 @@ INDEXES: dict[str, list[tuple[list, dict[str, Any]]]] = {
             [("user_id", ASCENDING), ("is_read", ASCENDING), ("created_at", DESCENDING)],
             {"name": "user_unread"},
         ),
+        (
+            [("ref_id", ASCENDING), ("kind", ASCENDING)],
+            {
+                "unique": True, "name": "uniq_payment_due_alert",
+                "partialFilterExpression": {"kind": "booking.payment_due"},
+            },
+        ),
     ],
     Collections.AUDIT_LOGS: [
         (

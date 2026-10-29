@@ -95,6 +95,22 @@ biyahetabaitravel.com.
     card + "Customers still owe" card, PaymentsCard on booking detail,
     Balance due tab/column, admin read-only Customer payments dialog.
   - Tests: `tests/test_agent_phase7_alerts_payments.py` (25/25).
+- **2026-10-29 Phase 8** — Agent branding, receipts, trip reminders:
+  - Emergent object storage (`core/storage.py`, EMERGENT_LLM_KEY +
+    APP_STORAGE_PREFIX). Agent logo upload (PNG/JPG ≤2 MB, Pillow-verified),
+    served via `GET /api/agent/profile/logo`; soft remove.
+  - Agent-edited `business_name` (falls back to admin's agency name).
+  - Quotes + new payment receipts (`/bookings/{id}/payments/{pid}/receipt.pdf`)
+    are AGENT-BRAND ONLY (logo, business name, contact). Receipt shows this
+    payment, history up to it, total, paid to date, balance due. Stable
+    receipt numbers via booking `payment_seq` → payment `receipt_seq`.
+  - Trip reminders: dashboard `trips_due` (pending/confirmed, travel within
+    14 days, balance > 0) + one `booking.payment_due` bell alert per booking
+    (partial unique index guarantees one).
+  - Frontend: Branding card on Profile, logo/name in sidebar + mobile header,
+    Receipt button per payment, Trips-due dashboard card. Query cache cleared
+    on login/logout.
+  - Tests: `tests/test_agent_phase8_branding_receipts.py` (22/22).
 
 ## Backlog
 ### Next candidates
