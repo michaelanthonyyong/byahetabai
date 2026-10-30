@@ -103,9 +103,12 @@ export default function AgentShell({ title, subtitle, actions, children }) {
     }
     document.body.classList.add("agent-theme");
     document.body.style.setProperty("--brand", brand);
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(brand.slice(i, i + 2), 16));
+    document.body.style.setProperty("--brand-fg", (0.299 * r + 0.587 * g + 0.114 * b) > 170 ? "#1c1917" : "#ffffff");
     return () => {
       document.body.classList.remove("agent-theme");
       document.body.style.removeProperty("--brand");
+      document.body.style.removeProperty("--brand-fg");
     };
   }, [brand]);
   return (

@@ -1,0 +1,40 @@
+{
+  "summary": "Phase 9 (brand colour + private share links) tested end-to-end. Backend: new pytest file with 13 tests, all passing. Phase 6/7/8 regression: 72 tests, all passing. Frontend: tested on desktop 1920 and mobile 390. Working: the colour picker, the invalid-code error, the too-light warning, the portal accent switch and reset back to teal, all three share dialogs, Open, the Shared links list, Switch off, the 410 page for a switched-off link and the receipt download as a file. One real bug: every share dialog creates 2 links per click.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/share/{token}", "issue": "No rate limit or abuse protection. Tokens are 24 bytes from token_urlsafe, so brute force is not realistic. Already deferred by E1."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ShareLinkDialog", "issue": "Each 'Get link' / 'Quote link' / payment 'Link' click creates TWO share_links docs, about 3-300 ms apart. Seen in the DB for E1's own 23:56 pair and for every UI click in this run. Cause: the POST /agent/share-links call sits inside useEffect([body, qc]), and React.StrictMode (index.js) runs effects twice in dev. The Shared links card then shows duplicate rows; switching off one leaves its twin active and still opening. Production builds don't run effects twice, but a side-effecting POST in useEffect is fragile. Fix: create the link in the click handler (parent) and pass the result to the dialog, or guard with a useRef('started') flag.", "selector": "[data-testid=quote-share-link], [data-testid=booking-share-quote], [data-testid^=payment-share-]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ShareLinkDialog mobile 390px", "issues": ["In the footer, 'Open' (a <Button> wrapped in an <a>) does not stretch full-width like 'Done', so the two buttons look misaligned. Nesting a button inside a link is also not valid markup; use <Button asChild><a/></Button>."]},
+      {"screen": "QuoteDialog", "issues": ["The travel date uses the browser's native date input (mm/dd/yyyy), not the shadcn Calendar."]},
+      {"screen": "Portal with a very light brand colour", "issues": ["The warning shows, but saving is still allowed. Primary buttons and the active nav then get white text on a light background (for example #fde68a), which is low contrast. Consider choosing the foreground colour automatically from luminance in the body.agent-theme overrides."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_agent_phase9_brand_color_share_links.py", "/app/backend/tests/ui_setup_phase9.py", "/app/test_reports/pytest/pytest_phase9.xml"],
+  "action_items": [
+    "Fix duplicate share-link creation in ShareLinkDialog: move the POST out of useEffect or add a ref guard. Remove the existing duplicate pair 123eaef9…/e1134ae6….",
+    "Optional: wrap the Open link with <Button asChild> so the mobile footer lays out cleanly.",
+    "Optional: give portal buttons a contrasting text colour when the brand colour is light."
+  ],
+  "critical_code_review_comments": [
+    "share.py: _status compares ISO strings (expires_at <= utc_now_iso()). This works because both use datetime.isoformat() with +00:00. Keep the format consistent everywhere or compare datetimes.",
+    "share.py open_link: a quote link renders even if the package was unpublished later (it only checks that the package exists). Acceptable because it is a price snapshot, but confirm this is intended.",
+    "update_profile stores brand_color in whatever case the user typed (e.g. '#ABCDEF'). Harmless, but consider normalising to lowercase.",
+    "No index on share_links.token is visible in the reviewed code. Add a unique index on token, plus one on agent_id + created_at."
+  ],
+  "updated_files": ["/app/backend/tests/test_agent_phase9_brand_color_share_links.py", "/app/backend/tests/ui_setup_phase9.py"],
+  "success_rate": {"backend": "100% (13/13 new, 72/72 regression)", "frontend": "~92% (all flows work; duplicate link creation bug)"},
+  "test_credentials": "From /app/memory/test_credentials.md: admin yongmichael992@gmail.com / Admin@12345, agent agent.demo@biyahetabai.example.com / Agent@12345",
+  "seed_data_creation": "Temporary TEST_P9 and TEST_P9UI customers, bookings, payments and share links were created and then removed. Demo agent restored to brand_color #7c2d12, balance Decimal128 60604.00, status active. E1's 3 earlier share links (Oct 29) left untouched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: export REACT_APP_BACKEND_URL=...; pytest -n0 /app/backend/tests/test_agent_phase9_brand_color_share_links.py. PDF colour is checked through pymupdf get_drawings fill colours (brown 7c2d12 vs teal 115e59). The demo agent's booking_account.balance is stored as Decimal128; restore it with that type. UI login: wait about 1.5 s before filling the form, then wait for [data-testid=notification-bell] with state='attached' (there are two bells, one hidden). Check the duplicate share link fix by counting GET /api/agent/share-links before and after one click; the difference should be 1.",
+  "rca of the issue": "Duplicate links. Steps: open the package Quote dialog, click Get link, then count share_links (it goes up by 2). Cause: a side-effecting POST inside useEffect in ShareLinkDialog.jsx, combined with React.StrictMode running effects twice in development. Fix: trigger the POST from the user's click, or guard it with useRef."
+}

@@ -111,6 +111,17 @@ biyahetabaitravel.com.
     Receipt button per payment, Trips-due dashboard card. Query cache cleared
     on login/logout.
   - Tests: `tests/test_agent_phase8_branding_receipts.py` (22/22).
+- **2026-10-30 Phase 9** — Brand colour + private share links:
+  - `brand_color` (#RRGGBB) on agent profile; used on quote/receipt PDFs and
+    portal accents (body.agent-theme CSS remap of teal utilities, auto
+    contrast text). Too-light warning in picker.
+  - `share_links` collection (token_urlsafe(24), 30-day expiry, revoke).
+    Kinds: quote (price snapshot), booking_quote, receipt. Public
+    `GET /api/share/{token}` streams PDF inline; 404/410 HTML pages.
+    Receipts remain downloadable as files.
+  - Frontend: colour picker on Branding card, ShareLinkDialog (Get link /
+    Quote link / payment Link), Profile "Shared links" card with switch-off.
+  - Tests: phase 9 pytest 13/13, regression 72/72.
 
 ## Backlog
 ### Next candidates
@@ -120,7 +131,7 @@ biyahetabaitravel.com.
 ### CANCELLED — Phase 7 Commission Withdrawals (agents collect markup upfront)
 
 ### P2 — Phase 8: Hardening
-- Rate limits on `/api/public/contact` and invite endpoints.
+- Rate limits on `/api/public/contact`, invite endpoints and `/api/share/{token}`.
 - Make the agent "max 5 pending top-ups" check atomic (currently count-then-insert).
 - Make the customer-payment overpay guard atomic (two simultaneous saves could exceed the total).
 - Legacy BTB-DEMO-0001 still shows "paid" with no payment rows (set manually pre-Phase 7).

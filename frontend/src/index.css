@@ -146,6 +146,7 @@ code {
 /* Agent brand colour: remaps the portal's teal accents to --brand. */
 body.agent-theme .bg-teal-800, body.agent-theme .bg-teal-700, body.agent-theme .bg-teal-600,
 body.agent-theme .data-\[state\=checked\]\:bg-teal-500[data-state="checked"] { background-color: var(--brand); }
+body.agent-theme .bg-teal-800, body.agent-theme .bg-teal-700 { color: var(--brand-fg, #fff); }
 body.agent-theme .hover\:bg-teal-900:hover { background-color: color-mix(in srgb, var(--brand) 82%, black); }
 body.agent-theme .bg-teal-50, body.agent-theme .bg-teal-50\/60 { background-color: color-mix(in srgb, var(--brand) 8%, white); }
 body.agent-theme .text-teal-700, body.agent-theme .text-teal-800 { color: var(--brand); }

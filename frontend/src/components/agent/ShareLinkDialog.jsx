@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, formatApiError } from "@/lib/api";
 import {
@@ -27,8 +27,13 @@ export const ShareLinkDialog = ({ body, onClose }) => {
   const qc = useQueryClient();
   const [link, setLink] = useState(null);
   const [error, setError] = useState(null);
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) {
+      return;
+    }
+    started.current = true;
     api.post("/agent/share-links", body)
       .then((r) => { setLink(r.data.link); qc.invalidateQueries({ queryKey: ["agent-share-links"] }); })
       .catch((err) => setError(formatApiError(err)));
@@ -57,7 +62,7 @@ export const ShareLinkDialog = ({ body, onClose }) => {
           </div>
         )}
         <DialogFooter>
-          {link ? <a href={url} target="_blank" rel="noreferrer" data-testid="share-link-open"><Button variant="outline"><ExternalLink size={14} className="mr-1" />Open</Button></a> : null}
+          {link ? <Button variant="outline" asChild><a href={url} target="_blank" rel="noreferrer" data-testid="share-link-open"><ExternalLink size={14} className="mr-1" />Open</a></Button> : null}
           <Button variant="outline" onClick={onClose} data-testid="share-link-close">Done</Button>
         </DialogFooter>
       </DialogContent>
