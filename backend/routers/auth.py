@@ -82,10 +82,22 @@ def _clear_auth_cookies(resp: Response) -> None:
     )
 
 
+_TRUSTED_PROXY_HOPS = int(os.environ.get("TRUSTED_PROXY_HOPS", "1"))
+
+
 def _client_ip(request: Request) -> Optional[str]:
+    """Client IP for login lockout keys.
+
+    The left end of X-Forwarded-For is client-controlled, so trusting it lets
+    an attacker rotate fake IPs and dodge the lockout. Each trusted proxy
+    appends the address it saw, so take the entry ``TRUSTED_PROXY_HOPS``
+    from the right (0 = ignore the header entirely).
+    """
     fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
+    if fwd and _TRUSTED_PROXY_HOPS > 0:
+        hops = [h.strip() for h in fwd.split(",") if h.strip()]
+        if hops:
+            return hops[-min(_TRUSTED_PROXY_HOPS, len(hops))]
     return request.client.host if request.client else None
 
 

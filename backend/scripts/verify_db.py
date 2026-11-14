@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import logging
 import sys
 from collections import defaultdict
@@ -91,7 +92,8 @@ async def check_seed_relationships() -> list[dict]:
     db = get_db()
     checks: list[dict] = []
 
-    admin = await db[Collections.USERS].find_one({"email": "admin@biyahetabai.example.com"})
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@biyahetabai.example.com").lower().strip()
+    admin = await db[Collections.USERS].find_one({"email": admin_email})
     if not admin:
         return [_fail("seed[admin exists]", "not found")]
     checks.append(_ok("seed[admin exists]"))
@@ -171,6 +173,40 @@ async def check_financial_invariants() -> list[dict]:
     return checks
 
 
+async def check_fund_request_ledger() -> list[dict]:
+    """Approved fund requests ⇔ exactly one TOP_UP of the same amount.
+
+    Catches a crash in the middle of ``approve_fund_request`` (request marked
+    approved but never credited, or credited but not linked) and any credit
+    for a request that is not approved.
+    """
+    db = get_db()
+    # Match on what the ledger row refers to, not its idempotency-key label
+    # (seed.py labels its demo top-up "seed-topup-…").
+    txns: dict[str, dict] = {}
+    async for t in db[Collections.TRANSACTIONS].find(
+        {"type": "TOP_UP", "ref_type": "fund_request"},
+    ):
+        txns[t["ref_id"]] = t
+
+    problems: list[str] = []
+    async for fr in db[Collections.FUND_REQUESTS].find({}):
+        t = txns.pop(fr["_id"], None)
+        if fr.get("status") == "approved":
+            if not t:
+                problems.append(f"{fr['_id']}: approved but no TOP_UP transaction")
+            elif money_from_bson(t["amount"]) != money_from_bson(fr["amount"]):
+                problems.append(f"{fr['_id']}: amount {fr['amount']} vs TOP_UP {t['amount']}")
+            elif fr.get("transaction_id") != t["_id"]:
+                problems.append(f"{fr['_id']}: transaction_id not linked to {t['_id']}")
+        elif t:
+            problems.append(f"{fr['_id']}: status {fr.get('status')} but has TOP_UP {t['_id']}")
+    problems += [f"{fid}: TOP_UP for a missing fund request" for fid in txns]
+
+    label = "invariant[approved fund requests ⇔ one TOP_UP each]"
+    return [_fail(label, problems) if problems else _ok(label)]
+
+
 async def check_idempotency_key_partial_unique() -> dict:
     """Duplicate ``idempotency_key`` (non-null) must be rejected; nulls allowed."""
     from pymongo.errors import DuplicateKeyError
@@ -230,6 +266,7 @@ async def main() -> int:
 
     print(">> Financial invariants ...")
     results += await check_financial_invariants()
+    results += await check_fund_request_ledger()
 
     print("\n== Results ==")
     passes = [r for r in results if r["status"] == "PASS"]

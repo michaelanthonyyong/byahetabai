@@ -17,6 +17,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import HTTPException
+from pymongo import ReturnDocument
 
 from core.db import Collections, get_db
 from core.notification_service import notify_agent
@@ -30,6 +31,8 @@ from models.transaction import (
 )
 
 logger = logging.getLogger(__name__)
+
+CENT = Decimal("0.01")
 
 
 def _account_for_type(t: TransactionType) -> str:
@@ -69,10 +72,7 @@ async def adjust_agent_balance(
         raise HTTPException(status_code=400, detail="A reason (≥3 chars) is required")
 
     db = get_db()
-    profile = await db[Collections.AGENT_PROFILES].find_one({"_id": agent_id})
-    if not profile:
-        raise HTTPException(status_code=404, detail="Agent not found")
-
+    amount = amount.quantize(CENT)
     txn_type = (
         TransactionType.ADJUSTMENT_CREDIT if kind == "credit"
         else TransactionType.ADJUSTMENT_DEBIT
@@ -80,14 +80,30 @@ async def adjust_agent_balance(
     account_kind = _account_for_type(txn_type)
     signed = _signed_amount(txn_type, amount)
 
-    current_balance = money_from_bson(profile["booking_account"]["balance"]) or Decimal("0.00")
-    new_balance = (current_balance + signed).quantize(Decimal("0.01"))
-    if new_balance < 0:
+    # Atomic $inc (never read-modify-$set): a concurrent booking debit or
+    # top-up between a read and a $set would otherwise be silently lost.
+    # Debits carry a $gte guard so the balance can never go negative.
+    query: dict = {"_id": agent_id}
+    if signed < 0:
+        query["booking_account.balance"] = {"$gte": money_to_bson(amount)}
+    profile = await db[Collections.AGENT_PROFILES].find_one_and_update(
+        query,
+        {"$inc": {"booking_account.balance": money_to_bson(signed)},
+         "$set": {"updated_at": utc_now_iso()}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not profile:
+        current = await db[Collections.AGENT_PROFILES].find_one({"_id": agent_id})
+        if not current:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        current_balance = money_from_bson(current["booking_account"]["balance"]) or Decimal("0.00")
         raise HTTPException(
             status_code=400,
             detail=f"Debit would put the agent's booking balance negative "
-                   f"(current: {current_balance}, requested: -{amount})",
+                   f"(current: {current_balance.quantize(CENT)}, requested: -{amount})",
         )
+    new_balance = (money_from_bson(profile["booking_account"]["balance"]) or Decimal("0.00")).quantize(CENT)
+    current_balance = (new_balance - signed).quantize(CENT)
 
     txn = FinancialTransaction(
         agent_id=agent_id,
@@ -110,15 +126,14 @@ async def adjust_agent_balance(
         ip=admin_ip, user_agent=admin_ua,
     )
 
-    # Sequential writes (see module docstring for the replica-set caveat).
-    await db[Collections.TRANSACTIONS].insert_one(txn.to_mongo())
-    await db[Collections.AGENT_PROFILES].update_one(
-        {"_id": agent_id},
-        {"$set": {
-            "booking_account.balance": money_to_bson(new_balance),
-            "updated_at": utc_now_iso(),
-        }},
-    )
+    try:
+        await db[Collections.TRANSACTIONS].insert_one(txn.to_mongo())
+    except Exception:
+        # Compensate so balance == SUM(ledger) still holds.
+        await db[Collections.AGENT_PROFILES].update_one(
+            {"_id": agent_id}, {"$inc": {"booking_account.balance": money_to_bson(-signed)}},
+        )
+        raise
     await db[Collections.AUDIT_LOGS].insert_one(audit.to_mongo())
 
     return {
@@ -172,35 +187,93 @@ async def approve_fund_request(
             "status": "approved",
         }
 
+    def _already_approved(row: dict) -> dict:
+        return {
+            "transaction_id": row.get("transaction_id"),
+            "already_approved": True,
+            "status": "approved",
+        }
+
+    if fr.get("status") == "approved":
+        return _already_approved(fr)
     if fr.get("status") != "pending":
         raise HTTPException(
             status_code=409,
             detail=f"Only pending requests can be approved (current: {fr.get('status')})",
         )
 
-    profile = await db[Collections.AGENT_PROFILES].find_one({"_id": fr["agent_id"]})
-    if not profile:
+    if not await db[Collections.AGENT_PROFILES].find_one({"_id": fr["agent_id"]}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Agent profile missing")
 
-    amount = money_from_bson(fr["amount"]) or Decimal("0.00")
+    amount = (money_from_bson(fr["amount"]) or Decimal("0.00")).quantize(CENT)
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Request amount must be > 0")
 
-    current_balance = money_from_bson(profile["booking_account"]["balance"]) or Decimal("0.00")
-    new_balance = (current_balance + amount).quantize(Decimal("0.01"))
-
-    txn = FinancialTransaction(
-        agent_id=fr["agent_id"],
-        account_kind="booking",
-        type=TransactionType.TOP_UP,
-        amount=amount,
-        balance_after=new_balance,
-        ref_type="fund_request",
-        ref_id=fund_request_id,
-        idempotency_key=idem_key,
-        created_by_user_id=admin_user_id,
-        note=(decision_note or "Fund request approval"),
+    # 1. Claim the request atomically. Of N concurrent approvals exactly one
+    #    wins; the rest see it already approved (or rejected → 409).
+    now = utc_now_iso()
+    claimed = await db[Collections.FUND_REQUESTS].find_one_and_update(
+        {"_id": fund_request_id, "status": "pending"},
+        {"$set": {
+            "status": "approved",
+            "decided_by_user_id": admin_user_id,
+            "decided_at": now,
+            "decision_note": decision_note,
+            "updated_at": now,
+        }},
     )
+    if not claimed:
+        current = await db[Collections.FUND_REQUESTS].find_one({"_id": fund_request_id}) or {}
+        if current.get("status") == "approved":
+            return _already_approved(current)
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only pending requests can be approved (current: {current.get('status')})",
+        )
+
+    # 2. Credit with $inc (never read-modify-$set), then write the ledger row.
+    #    On any failure, undo the credit and release the claim.
+    profile = None
+    try:
+        profile = await db[Collections.AGENT_PROFILES].find_one_and_update(
+            {"_id": fr["agent_id"]},
+            {"$inc": {"booking_account.balance": money_to_bson(amount)},
+             "$set": {"updated_at": now}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if not profile:
+            raise HTTPException(status_code=404, detail="Agent profile missing")
+        new_balance = (money_from_bson(profile["booking_account"]["balance"]) or Decimal("0.00")).quantize(CENT)
+        current_balance = (new_balance - amount).quantize(CENT)
+
+        txn = FinancialTransaction(
+            agent_id=fr["agent_id"],
+            account_kind="booking",
+            type=TransactionType.TOP_UP,
+            amount=amount,
+            balance_after=new_balance,
+            ref_type="fund_request",
+            ref_id=fund_request_id,
+            idempotency_key=idem_key,
+            created_by_user_id=admin_user_id,
+            note=(decision_note or "Fund request approval"),
+        )
+        await db[Collections.TRANSACTIONS].insert_one(txn.to_mongo())
+    except Exception:
+        if profile:
+            await db[Collections.AGENT_PROFILES].update_one(
+                {"_id": fr["agent_id"]},
+                {"$inc": {"booking_account.balance": money_to_bson(-amount)}},
+            )
+        await db[Collections.FUND_REQUESTS].update_one(
+            {"_id": fund_request_id, "status": "approved", "decided_at": now},
+            {"$set": {
+                "status": "pending", "decided_by_user_id": None, "decided_at": None,
+                "decision_note": None, "updated_at": utc_now_iso(),
+            }},
+        )
+        raise
+
     audit = AuditLog(
         actor_user_id=admin_user_id, actor_role="admin",
         action="fund_request.approve",
@@ -215,25 +288,9 @@ async def approve_fund_request(
         ip=admin_ip, user_agent=admin_ua,
     )
 
-    now = utc_now_iso()
-    await db[Collections.TRANSACTIONS].insert_one(txn.to_mongo())
-    await db[Collections.AGENT_PROFILES].update_one(
-        {"_id": fr["agent_id"]},
-        {"$set": {
-            "booking_account.balance": money_to_bson(new_balance),
-            "updated_at": now,
-        }},
-    )
     await db[Collections.FUND_REQUESTS].update_one(
-        {"_id": fund_request_id, "status": "pending"},
-        {"$set": {
-            "status": "approved",
-            "decided_by_user_id": admin_user_id,
-            "decided_at": now,
-            "decision_note": decision_note,
-            "transaction_id": txn.id,
-            "updated_at": now,
-        }},
+        {"_id": fund_request_id},
+        {"$set": {"transaction_id": txn.id}},
     )
     await db[Collections.AUDIT_LOGS].insert_one(audit.to_mongo())
     await notify_agent(
@@ -273,7 +330,7 @@ async def reject_fund_request(
         )
 
     now = utc_now_iso()
-    await db[Collections.FUND_REQUESTS].update_one(
+    res = await db[Collections.FUND_REQUESTS].update_one(
         {"_id": fund_request_id, "status": "pending"},
         {"$set": {
             "status": "rejected",
@@ -283,6 +340,13 @@ async def reject_fund_request(
             "updated_at": now,
         }},
     )
+    if res.matched_count == 0:
+        # Lost a race with a concurrent approve/reject — don't audit or notify.
+        current = await db[Collections.FUND_REQUESTS].find_one({"_id": fund_request_id}, {"status": 1}) or {}
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only pending requests can be rejected (current: {current.get('status')})",
+        )
     await db[Collections.AUDIT_LOGS].insert_one(
         AuditLog(
             actor_user_id=admin_user_id, actor_role="admin",

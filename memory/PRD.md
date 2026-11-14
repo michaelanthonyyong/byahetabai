@@ -122,6 +122,17 @@ biyahetabaitravel.com.
   - Frontend: colour picker on Branding card, ShareLinkDialog (Get link /
     Quote link / payment Link), Profile "Shared links" card with switch-off.
   - Tests: phase 9 pytest 13/13, regression 72/72.
+- **2026-11-14 Hardening (balance races + lockout)**:
+  - Admin balance adjustment and fund-request approval now use atomic
+    `$inc` (previously read-modify-`$set`, which could silently overwrite a
+    concurrent booking debit). Debits keep an overdraft `$gte` guard.
+  - Fund-request approve claims the request atomically (pending→approved)
+    before crediting, with rollback on failure; reject returns 409 if it
+    lost a race (no stray audit/notification).
+  - Login lockout IP now uses the proxy-appended X-Forwarded-For entry
+    (`TRUSTED_PROXY_HOPS`, default 1) — spoofed left-most values ignored.
+  - `scripts/verify_db.py` also checks approved fund requests ⇔ one TOP_UP.
+  - Tests: `tests/test_concurrency_hardening.py`.
 
 ## Backlog
 ### Next candidates
