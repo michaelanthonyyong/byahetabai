@@ -133,6 +133,14 @@ biyahetabaitravel.com.
     (`TRUSTED_PROXY_HOPS`, default 1) — spoofed left-most values ignored.
   - `scripts/verify_db.py` also checks approved fund requests ⇔ one TOP_UP.
   - Tests: `tests/test_concurrency_hardening.py`.
+- **2026-11-15 Rebrand + portable logo storage**:
+  - Platform rebranded Biyahe'Ta Bai → eNaviga (official logo, favicon,
+    copy). One-time startup migration renames the `brand` setting if it
+    still holds a legacy name. Agent branding untouched (agent-only docs).
+  - Agent logos now stored in MongoDB (`stored_files`, path `db:<id>`) so
+    uploads work on any host without Emergent credentials. Legacy Emergent
+    paths still readable when `EMERGENT_LLM_KEY` is set;
+    `STORAGE_BACKEND=emergent` restores the old upload target.
 
 ## Backlog
 ### Next candidates
