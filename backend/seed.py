@@ -1,4 +1,4 @@
-"""Idempotent seed data for Biyahe'Ta Bai Travel (Phase 1).
+"""Idempotent seed data for eNaviga (Phase 1).
 
 Rules
 -----

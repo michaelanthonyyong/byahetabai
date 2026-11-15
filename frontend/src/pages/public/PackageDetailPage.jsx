@@ -193,7 +193,7 @@ export default function PackageDetailPage() {
               </div>
 
               <div className="mt-6 text-xs text-brand-ink-soft leading-relaxed">
-                Book, pay, and confirm through a Biyahe'Ta Bai travel agent. We'll match you with someone
+                Book, pay, and confirm through an eNaviga travel agent. We'll match you with someone
                 who knows this route.
               </div>
             </div>

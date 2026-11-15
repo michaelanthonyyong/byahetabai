@@ -42,7 +42,7 @@ const Summary = ({ pkg, pax, balance, busy, canSubmit, onSubmit }) => {
       <Button onClick={onSubmit} disabled={!canSubmit || busy || short} className="w-full bg-teal-800 hover:bg-teal-900" data-testid="new-booking-submit">
         {busy ? <Loader2 className="animate-spin mr-1" size={14} /> : null}Confirm booking
       </Button>
-      <p className="text-[11px] text-stone-500">Booking goes to Biyahe'Ta Bai for confirmation.</p>
+      <p className="text-[11px] text-stone-500">Booking goes to eNaviga for confirmation.</p>
     </CardContent></Card>
   );
 };

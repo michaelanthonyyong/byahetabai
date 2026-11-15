@@ -243,7 +243,7 @@ async def summary_counts() -> dict[str, int]:
 
 
 async def main() -> int:
-    print("== Biyahe'Ta Bai Travel — Database Verification Report ==\n")
+    print("== eNaviga — Database Verification Report ==\n")
     print(">> Running idempotent init_db() ...")
     init_summary = await init_db()
     print(json.dumps(init_summary, indent=2))

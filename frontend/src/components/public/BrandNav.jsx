@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+import BrandLogo from "@/components/BrandLogo";
 const NAV = [
   { to: "/", label: "Home", end: true },
   { to: "/packages", label: "Tours" },
@@ -42,13 +43,8 @@ export default function BrandNav({ transparent = false }) {
       ].join(" ")}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 md:py-5">
-        <Link to="/" className={["flex items-baseline gap-2 font-display text-xl md:text-2xl tracking-tight",
-          solid ? "text-brand-ink" : "text-white"].join(" ")}
-          data-testid="brand-logo-link"
-        >
-          <span>Biyahe'Ta Bai</span>
-          <span className={["text-[10px] uppercase tracking-[0.25em]",
-            solid ? "text-brand-ocean" : "text-brand-sunset-soft"].join(" ")}>Travel</span>
+        <Link to="/" className="flex items-center" data-testid="brand-logo-link" aria-label="eNaviga home">
+          <BrandLogo className="h-8 md:h-10" onDark={!solid} />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">

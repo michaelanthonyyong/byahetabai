@@ -229,7 +229,7 @@ class TestReceipts:
         assert f"{PFX}_Maria Reyes" in text
         assert imgs >= 1
         low = text.lower()
-        assert "biyahe" not in low and "markup" not in low and "net cost" not in low
+        assert "biyahe" not in low and "enaviga" not in low and "markup" not in low and "net cost" not in low
         assert "7,000.00" not in text  # net cost 3500*2
 
     def test_second_receipt(self, agent, booking):
@@ -237,7 +237,7 @@ class TestReceipts:
         text, _ = _pdf_text(self._receipt(agent, b["id"], p2["id"]).content)
         assert f"{b['reference_code']}-R2" in text
         assert "PHP 2,000.00" in text and "PHP 3,000.00" in text  # both in history; balance 3000
-        assert "Balance due" in text and "Biyahe" not in text
+        assert "Balance due" in text and "Biyahe" not in text and "eNaviga" not in text
 
     def test_fully_paid_receipt_no_logo(self, agent, booking):
         b, _, _ = booking

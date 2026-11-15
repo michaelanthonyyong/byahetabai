@@ -1,4 +1,4 @@
-"""Domain models for Biyahe'Ta Bai Travel (Phase 1 foundation)."""
+"""Domain models for eNaviga (Phase 1 foundation)."""
 from .base import BaseDocument, money_to_bson, money_from_bson, utc_now_iso
 from .user import User, UserRole, UserStatus
 from .agent import AgentProfile, AgentAccount, AgentStatus

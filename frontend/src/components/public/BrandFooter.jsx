@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 
+import BrandLogo from "@/components/BrandLogo";
 export default function BrandFooter() {
   return (
     <footer className="bg-brand-ocean-deep text-brand-cream" data-testid="brand-footer">
       <div className="mx-auto max-w-7xl px-6 py-14 grid gap-12 md:grid-cols-4">
         <div className="md:col-span-2 space-y-4">
-          <div className="font-display text-2xl tracking-tight text-white">Biyahe'Ta Bai Travel</div>
+          <BrandLogo className="h-11" onDark testid="footer-brand-logo" />
           <p className="text-sm text-brand-cream/70 max-w-md leading-relaxed">
             Local and international tours curated for Filipino travellers. Book a package, message an agent,
             and let us take care of the rest.
@@ -30,7 +31,7 @@ export default function BrandFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-7xl px-6 py-6 text-xs text-brand-cream/60 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>© {new Date().getFullYear()} Biyahe'Ta Bai Travel. All rights reserved.</div>
+          <div>© {new Date().getFullYear()} eNaviga. All rights reserved.</div>
           <div>Go. Explore. Discover.</div>
         </div>
       </div>

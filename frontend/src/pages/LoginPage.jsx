@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+import BrandLogo from "@/components/BrandLogo";
 export default function LoginPage() {
   const { login, user } = useAuth();
   const location = useLocation();
@@ -43,7 +44,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
       <Card className="w-full max-w-md" data-testid="login-card">
         <CardHeader className="space-y-2">
-          <div className="text-xs uppercase tracking-widest text-stone-500">Biyahe'Ta Bai Travel</div>
+          <BrandLogo className="h-12" testid="login-brand-logo" />
           <CardTitle className="text-2xl">Sign in to the portal</CardTitle>
           <CardDescription>
             Admin &amp; agent access only. Agents must accept their invitation first.

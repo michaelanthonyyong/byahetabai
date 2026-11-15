@@ -241,7 +241,8 @@ class TestSettings:
         assert r.status_code == 200, r.text
         data = r.json()["settings"]
         expected = {"brand", "minimum_topup_amount", "maximum_topup_amount",
-                    "commission_withdrawals_enabled"}
+                    "commission_withdrawals_enabled",
+                    "minimum_markup_amount", "maximum_markup_amount"}  # markup keys added in Phase 5
         assert set(data.keys()) == expected
         for k, v in data.items():
             for field in ("key", "label", "kind", "description", "value", "updated_at"):
@@ -269,18 +270,24 @@ class TestSettings:
         assert r.status_code == 400
 
     def test_brand_strips_extra_keys(self, admin):
-        r = admin.put(
-            f"{API}/admin/settings/brand",
-            json={"value": {"name": "BiyaheTaBai", "tagline": "Test tagline",
-                            "currency": "PHP", "support_email": "s@x.com",
-                            "support_phone": "+63", "evil_extra": "should-be-stripped"}},
-            timeout=15,
-        )
-        assert r.status_code == 200, r.text
-        r2 = admin.get(f"{API}/admin/settings", timeout=15)
-        brand_val = r2.json()["settings"]["brand"]["value"]
-        assert "evil_extra" not in brand_val
-        assert brand_val.get("name") == "BiyaheTaBai"
+        # Snapshot the live brand so this test never leaves junk on the public site.
+        original = admin.get(f"{API}/admin/settings", timeout=15).json()["settings"]["brand"]["value"]
+        try:
+            r = admin.put(
+                f"{API}/admin/settings/brand",
+                json={"value": {"name": "Test Brand", "tagline": "Test tagline",
+                                "currency": "PHP", "support_email": "s@x.com",
+                                "support_phone": "+63", "evil_extra": "should-be-stripped"}},
+                timeout=15,
+            )
+            assert r.status_code == 200, r.text
+            r2 = admin.get(f"{API}/admin/settings", timeout=15)
+            brand_val = r2.json()["settings"]["brand"]["value"]
+            assert "evil_extra" not in brand_val
+            assert brand_val.get("name") == "Test Brand"
+        finally:
+            restore = admin.put(f"{API}/admin/settings/brand", json={"value": original}, timeout=15)
+            assert restore.status_code == 200, restore.text
 
     def test_cross_key_min_cannot_exceed_max(self, admin):
         # Read current max

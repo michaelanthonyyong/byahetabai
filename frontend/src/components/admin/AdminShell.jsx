@@ -1,5 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import BrandLogo from "@/components/BrandLogo";
 import {
   LayoutDashboard, Users, Package, ReceiptText, ArrowLeftRight,
   ClipboardList, Settings, LogOut, MapPin, Inbox, ShieldCheck,
@@ -27,8 +28,8 @@ export default function AdminShell({ title, subtitle, actions, children }) {
         <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-stone-200 bg-white">
           <div className="px-6 py-5 border-b border-stone-200">
             <Link to="/admin" className="block">
-              <div className="text-[10px] uppercase tracking-[0.25em] text-stone-500">Admin</div>
-              <div className="font-semibold text-stone-900 mt-1">Biyahe'Ta Bai</div>
+              <BrandLogo className="h-9" testid="admin-brand-logo" />
+              <div className="text-[10px] uppercase tracking-[0.25em] text-stone-500 mt-2">Admin portal</div>
             </Link>
           </div>
           <nav className="flex-1 px-3 py-4 space-y-1">
@@ -75,7 +76,10 @@ export default function AdminShell({ title, subtitle, actions, children }) {
         <div className="flex-1 min-w-0 flex flex-col">
           <header className="border-b border-stone-200 bg-white lg:hidden">
             <div className="flex items-center justify-between px-6 py-4">
-              <Link to="/admin" className="font-semibold">Biyahe'Ta Bai · Admin</Link>
+              <Link to="/admin" className="flex items-center gap-2 font-semibold">
+                <BrandLogo className="h-7" testid="admin-brand-logo-mobile" />
+                <span className="text-xs uppercase tracking-widest text-stone-500">Admin</span>
+              </Link>
               <button onClick={logout} className="text-xs text-stone-600" data-testid="admin-logout-button-mobile">
                 Sign out
               </button>

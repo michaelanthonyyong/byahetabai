@@ -180,7 +180,7 @@ DEFAULT_SETTINGS = [
     {
         "key": "brand",
         "value": {
-            "name": "Biyahe'Ta Bai Travel",
+            "name": "eNaviga",
             "tagline": "Go. Explore. Discover.",
             "currency": "PHP",
             "support_email": "hello@biyahetabaitravel.com",
@@ -233,15 +233,35 @@ async def ensure_default_settings() -> list[str]:
     return inserted
 
 
+# "BiyaheTaBai" is a leftover from an old settings test that never restored the brand.
+LEGACY_BRAND_NAMES = {"Biyahe'Ta Bai Travel", "Biyahe'Ta Bai", "BiyaheTaBai"}
+
+
+async def migrate_platform_brand() -> bool:
+    """One-time rebrand of the *platform* brand setting to eNaviga.
+
+    Only rewrites ``system_settings.brand.name`` while it still holds the
+    legacy default, so an admin-customised name is never overwritten.
+    Agent profiles (business names, logos, colours) are not touched.
+    """
+    res = await get_db()[Collections.SETTINGS].update_one(
+        {"key": "brand", "value.name": {"$in": list(LEGACY_BRAND_NAMES)}},
+        {"$set": {"value.name": "eNaviga", "updated_at": utc_now_iso()}},
+    )
+    return res.modified_count > 0
+
+
 async def init_db() -> dict[str, Any]:
     """Run every idempotent bootstrap step. Returns a summary dict."""
     created = await ensure_collections()
     indexes = await ensure_indexes()
     settings = await ensure_default_settings()
+    rebranded = await migrate_platform_brand()
     summary = {
         "collections_created": created,
         "indexes_ensured": {c: len(names) for c, names in indexes.items()},
         "default_settings_inserted": settings,
+        "platform_brand_migrated": rebranded,
     }
     logger.info("init_db complete: %s", summary)
     return summary

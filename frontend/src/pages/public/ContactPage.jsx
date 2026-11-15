@@ -39,7 +39,7 @@ export default function ContactPage() {
         <div>
           <div className="text-[11px] uppercase tracking-[0.3em] text-brand-ocean mb-3">Contact</div>
           <h1 className="font-display text-4xl md:text-5xl leading-tight text-brand-ink">
-            Talk to a Biyahe'Ta Bai agent.
+            Talk to an eNaviga agent.
           </h1>
           <p className="mt-4 text-brand-ink-soft leading-relaxed max-w-xl">
             Tell us where you'd like to go and when. An agent will get back to you with
@@ -72,7 +72,7 @@ export default function ContactPage() {
               </div>
               <h2 className="font-display text-2xl mt-4 text-brand-ink">Message sent</h2>
               <p className="mt-2 text-sm text-brand-ink-soft">
-                An agent will reach out shortly. Thanks for choosing Biyahe'Ta Bai.
+                An agent will reach out shortly. Thanks for choosing eNaviga.
               </p>
             </div>
           ) : (

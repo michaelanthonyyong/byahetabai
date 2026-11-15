@@ -11,7 +11,7 @@ export default function AboutPage() {
           Local and international travel, made effortless.
         </h1>
         <p className="mt-6 text-lg text-brand-ink-soft leading-relaxed">
-          Biyahe'Ta Bai Travel started with a simple idea: getting Filipinos on great trips
+          eNaviga started with a simple idea: getting Filipinos on great trips
           shouldn't feel like paperwork. We work with a curated network of travel agents to
           plan, book, and support every itinerary — from a Cebu long weekend to a two-week
           swing across Japan.

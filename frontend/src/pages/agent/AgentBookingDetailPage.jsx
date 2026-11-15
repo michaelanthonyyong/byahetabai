@@ -40,9 +40,9 @@ const Money = ({ b }) => {
 };
 
 const STATUS_HINT = {
-  pending: "Waiting for Biyahe'Ta Bai to confirm. Contact us if you need to cancel.",
-  confirmed: "Confirmed. To cancel, contact Biyahe'Ta Bai.",
-  cancelled: "Cancelled by Biyahe'Ta Bai.",
+  pending: "Waiting for eNaviga to confirm. Contact us if you need to cancel.",
+  confirmed: "Confirmed. To cancel, contact eNaviga.",
+  cancelled: "Cancelled by eNaviga.",
   completed: "Trip completed.",
 };
 

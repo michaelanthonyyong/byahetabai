@@ -31,7 +31,7 @@ const Sidebar = ({ user, logout }) => {
         <AgentLogo profile={profile} className="h-11 w-11 shrink-0" />
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.25em] text-teal-700">Agent portal</div>
-          <div className="font-display text-lg text-stone-900 mt-1 leading-tight break-words" data-testid="agent-brand-name">{profile?.brand_name || "Biyahe'Ta Bai"}</div>
+          <div className="font-display text-lg text-stone-900 mt-1 leading-tight break-words" data-testid="agent-brand-name">{profile?.brand_name || ""}</div>
         </div>
       </Link>
     </div>
@@ -68,7 +68,7 @@ const MobileHeader = ({ logout }) => {
     <div className="flex items-center justify-between gap-2 px-4 py-3">
       <Link to="/agent" className="flex items-center gap-2 min-w-0 font-display text-base">
         <AgentLogo profile={profile} className="h-8 w-8 shrink-0" testid="agent-brand-logo-mobile" />
-        <span className="truncate">{profile?.brand_name || "Biyahe'Ta Bai"}</span>
+        <span className="truncate">{profile?.brand_name || ""}</span>
       </Link>
       <div className="flex items-center gap-2 shrink-0">
         <NotificationBell testid="notification-bell-mobile" />

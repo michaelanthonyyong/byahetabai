@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+import BrandLogo from "@/components/BrandLogo";
 /**
  * Shared page for accepting an admin invitation and consuming a
  * password-reset token.  Mode is derived from the current pathname
@@ -47,14 +48,14 @@ export default function SetPasswordPage({ mode }) {
   const title = mode === "invite" ? "Set your password" : "Choose a new password";
   const blurb =
     mode === "invite"
-      ? "Welcome to Biyahe'Ta Bai Travel. Set a password to activate your agent account."
+      ? "Welcome to eNaviga. Set a password to activate your agent account."
       : "Your admin issued a password reset. Choose a new one to continue.";
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
       <Card className="w-full max-w-md" data-testid="set-password-card">
         <CardHeader className="space-y-2">
-          <div className="text-xs uppercase tracking-widest text-stone-500">Biyahe'Ta Bai Travel</div>
+          <BrandLogo className="h-12" testid="set-password-brand-logo" />
           <CardTitle className="text-2xl">{title}</CardTitle>
           <CardDescription>{blurb}</CardDescription>
         </CardHeader>

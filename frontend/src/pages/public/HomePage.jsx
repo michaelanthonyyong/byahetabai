@@ -74,14 +74,14 @@ export default function HomePage() {
         </div>
         <div className="relative mx-auto max-w-7xl px-6 pt-40 pb-24 md:pt-48 md:pb-32">
           <div className="max-w-2xl">
-            <div className="text-[11px] uppercase tracking-[0.3em] text-brand-sunset-soft mb-4">
-              {brand?.name || "Biyahe'Ta Bai Travel"}
+            <div className="text-sm font-medium tracking-[0.12em] text-brand-sunset-soft mb-4">
+              {brand?.name || "eNaviga"}
             </div>
             <h1 className="font-display text-5xl md:text-6xl lg:text-7xl text-white leading-[1.05]" data-testid="home-hero-headline">
               {brand?.tagline || "Go. Explore. Discover."}
             </h1>
             <p className="mt-5 text-lg text-white/85 max-w-xl">
-              Experience the best of local and international travel with Biyahe'Ta Bai.
+              Experience the best of local and international travel with eNaviga.
             </p>
             <HeroSearch />
           </div>
