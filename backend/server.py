@@ -101,6 +101,26 @@ app.include_router(agent_router)
 app.include_router(agent_bookings_router)
 app.include_router(share_router)
 
+# --- Hosted mode: serve the built React app from this same service ---------
+# One address for site + API keeps login cookies first-party (no cross-site
+# cookie problems) and needs no CORS. Skipped when the build is absent
+# (local dev runs the React dev server on :3000 instead).
+_FRONTEND_DIST = Path(os.environ.get("FRONTEND_DIST") or (ROOT_DIR.parent / "frontend" / "build")).resolve()
+if (_FRONTEND_DIST / "index.html").is_file():
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        candidate = (_FRONTEND_DIST / full_path).resolve()
+        if full_path and candidate.is_file() and _FRONTEND_DIST in candidate.parents:
+            cache = "public, max-age=31536000, immutable" if full_path.startswith("static/") else "public, max-age=3600"
+            return FileResponse(candidate, headers={"Cache-Control": cache})
+        # Client-side routes (/admin, /agent/..., /packages/x) all load the app shell.
+        return FileResponse(_FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})
+
 # CORS — for credentialed cookies, "*" cannot coexist with allow_credentials.
 # Same-origin here (frontend and /api share the preview domain), but we still
 # whitelist explicit origins or fall back to a preview-domain regex.

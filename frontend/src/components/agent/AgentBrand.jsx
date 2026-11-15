@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { BACKEND_URL } from "@/lib/backendUrl";
 
 export const useAgentProfile = () =>
   useQuery({
@@ -10,7 +11,7 @@ export const useAgentProfile = () =>
 
 export const logoUrl = (profile) =>
   profile?.has_logo
-    ? `${process.env.REACT_APP_BACKEND_URL}/api/agent/profile/logo?v=${encodeURIComponent(profile.logo_updated_at || "")}`
+    ? `${BACKEND_URL}/api/agent/profile/logo?v=${encodeURIComponent(profile.logo_updated_at || "")}`
     : null;
 
 export const AgentLogo = ({ profile, className = "h-10 w-10", testid = "agent-brand-logo" }) => {

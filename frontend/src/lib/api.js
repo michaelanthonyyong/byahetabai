@@ -6,7 +6,7 @@ import axios from "axios";
  * - withCredentials: send httpOnly cookies to backend
  * - Uniform error normalisation (FastAPI 422 returns array; render-safe)
  */
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+import { BACKEND_URL } from "@/lib/backendUrl";
 
 export const api = axios.create({
   baseURL: `${BACKEND_URL}/api`,

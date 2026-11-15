@@ -1,0 +1,14 @@
+# Never ship secrets or local junk into the image
+**/.env
+**/.env.*
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+.git
+.emergent
+test_reports
+memory
+frontend/build
+backend/tests
+*.md

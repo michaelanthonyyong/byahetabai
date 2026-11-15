@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Copy, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { BACKEND_URL } from "@/lib/backendUrl";
 
-export const shareUrl = (path) => `${process.env.REACT_APP_BACKEND_URL}${path}`;
+export const shareUrl = (path) => `${BACKEND_URL}${path}`;
 
 export async function copyText(text) {
   try {

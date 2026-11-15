@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Download } from "lucide-react";
+import { BACKEND_URL } from "@/lib/backendUrl";
 
 const TYPES = [
   "TOP_UP", "BOOKING_DEBIT", "BOOKING_REFUND",
@@ -67,7 +68,7 @@ export default function AdminTransactionsPage() {
       Object.entries({ ...filters, page_size: undefined, limit: 5000 })
         .filter(([, v]) => v != null && v !== "")
     ).toString();
-    const url = `${process.env.REACT_APP_BACKEND_URL}/api/admin/transactions/export.csv${qs ? `?${qs}` : ""}`;
+    const url = `${BACKEND_URL}/api/admin/transactions/export.csv${qs ? `?${qs}` : ""}`;
     // Trigger browser download while keeping the cookie session.
     window.open(url, "_blank");
   };
